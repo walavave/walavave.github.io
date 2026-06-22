@@ -1,5 +1,5 @@
 ---
-title: 试试看
+title: 干他
 description: A guide in my new Starlight docs site.
 hideSidebar: true
 link:
@@ -12,9 +12,9 @@ platform:
   - simulate:
       - Isaac Lab
       - Mujoco
-  - deploy: Unitree G1
+  - deploy: lite3
 tags:
-  - locomotion
+  - navigation
 ---
 
 Guides lead a user through a specific task they want to accomplish, often with a sequence of steps.

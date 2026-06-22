@@ -21,6 +21,8 @@ const articlePlatformSchema = z
 	})
 	.strict();
 
+const tagValueSchema = z.union([z.string(), z.array(z.string())]);
+
 export const collections = {
 	docs: defineCollection({
 		loader: docsLoader(),
@@ -29,6 +31,7 @@ export const collections = {
 				hideSidebar: z.boolean().optional().default(false),
 				link: z.union([articleLinkSchema, z.array(articleLinkSchema)]).optional(),
 				platform: z.union([articlePlatformSchema, z.array(articlePlatformSchema)]).optional(),
+				tags: tagValueSchema.optional(),
 			}),
 		}),
 	}),

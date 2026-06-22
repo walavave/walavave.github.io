@@ -1,11 +1,14 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
 import starlight from '@astrojs/starlight';
 import starlightThemeNova from 'starlight-theme-nova'
 
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://walavave.github.io',
 	integrations: [
+		react(),
 		starlight({
 			title: 'My Docs',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
@@ -47,8 +50,8 @@ export default defineConfig({
 						href: 'https://github.com/ocavue/starlight-theme-nova/blob/master/packages/starlight-theme-nova/CHANGELOG.md',
 						},
 						{
-						label: 'Starlight',
-						href: 'https://starlight.astro.build',
+						label: 'List',
+						href: '/list/',
 						},
 					],
 				}), 
