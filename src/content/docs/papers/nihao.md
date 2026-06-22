@@ -1,6 +1,18 @@
 ---
-title: Example Guide
+title: 试试看
 description: A guide in my new Starlight docs site.
+hideSidebar: true
+link:
+  - arxiv: https://arxiv.org/
+  - website: https://example.com
+  - youtube: https://www.youtube.com/
+  - github: https://github.com/
+platform:
+  - train: Nvidia H100
+  - simulate:
+      - Isaac Lab
+      - Mujoco
+  - deploy: Unitree G1
 ---
 
 Guides lead a user through a specific task they want to accomplish, often with a sequence of steps.
@@ -9,5 +21,3 @@ Writing a good guide requires thinking about what your users are trying to do.
 ## Further reading
 
 - Read [about how-to guides](https://diataxis.fr/how-to-guides/) in the Diátaxis framework
-
-[你好](/papers/nihao/)

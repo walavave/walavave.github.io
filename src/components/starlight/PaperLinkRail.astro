@@ -1,0 +1,385 @@
+---
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { Icon } from '@astrojs/starlight/components';
+import { platformCatalog } from './paper-platform-catalog';
+
+interface LinkConfig {
+	arxiv?: string;
+	website?: string;
+	youtube?: string;
+	github?: string;
+}
+
+interface PlatformConfig {
+	train?: string | string[];
+	simulate?: string | string[];
+	deploy?: string | string[];
+}
+
+const { links, platform, locale } = Astro.props as {
+	links?: LinkConfig | LinkConfig[];
+	platform?: PlatformConfig | PlatformConfig[];
+	locale?: string;
+};
+
+const isChinese = (locale ?? 'root').toLowerCase().startsWith('zh');
+
+const messages = {
+	root: {
+		railLabel: 'Article links and platforms',
+		arxiv: 'arXiv',
+		website: 'Website',
+		youtube: 'YouTube',
+		github: 'GitHub',
+		train: 'Train',
+		simulate: 'Simulate',
+		deploy: 'Deploy',
+	},
+	'zh-CN': {
+		railLabel: '文章链接与平台',
+		arxiv: 'arXiv',
+		website: '官网',
+		youtube: 'YouTube',
+		github: 'GitHub',
+		train: '训练',
+		simulate: '仿真',
+		deploy: '部署',
+	},
+} as const;
+
+const t = isChinese ? messages['zh-CN'] : messages.root;
+
+const normalizedLinks = (Array.isArray(links) ? Object.assign({}, ...links) : links) ?? {};
+
+const railLinks = [
+	{ key: 'arxiv', href: normalizedLinks.arxiv, label: t.arxiv },
+	{ key: 'website', href: normalizedLinks.website, label: t.website },
+	{ key: 'youtube', href: normalizedLinks.youtube, label: t.youtube },
+	{ key: 'github', href: normalizedLinks.github, label: t.github },
+].filter((item) => item.href);
+
+const rawPlatform = (Array.isArray(platform) ? Object.assign({}, ...platform) : platform) ?? {};
+
+function normalizePlatformNames(value: string | string[] | undefined) {
+	if (!value) return [];
+	const values = Array.isArray(value) ? value : [value];
+	return values
+		.flatMap((entry) => entry.split(','))
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+}
+
+function resolveThumbnail(publicPath: string | undefined) {
+	if (!publicPath || !publicPath.startsWith('/')) return undefined;
+	const filePath = path.join(process.cwd(), 'public', publicPath.slice(1));
+	return existsSync(filePath) ? publicPath : undefined;
+}
+
+const platformSections = [
+	{ title: t.train, items: normalizePlatformNames(rawPlatform.train) },
+	{ title: t.simulate, items: normalizePlatformNames(rawPlatform.simulate) },
+	{ title: t.deploy, items: normalizePlatformNames(rawPlatform.deploy) },
+]
+	.map((section) => ({
+		...section,
+		items: section.items.map((name) => ({
+			name,
+			thumbnail: resolveThumbnail(platformCatalog[name]?.thumbnail),
+			href: platformCatalog[name]?.href,
+		})),
+	}))
+	.filter((section) => section.items.length > 0);
+
+const hasRailContent = railLinks.length > 0 || platformSections.length > 0;
+
+const websiteIcon = `
+	<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+		<circle cx="12" cy="12" r="9" />
+		<path d="M3 12h18" />
+		<path d="M12 3a15 15 0 0 1 0 18" />
+		<path d="M12 3a15 15 0 0 0 0 18" />
+	</g>
+`;
+---
+
+{
+	hasRailContent && (
+		<aside class="link-rail print:hidden" aria-label={t.railLabel}>
+			<div class="link-rail-inner">
+				{
+					railLinks.length > 0 && (
+						<div class="link-button-group">
+							{railLinks.map(({ key, href, label }) => (
+								<a
+									href={href}
+									target="_blank"
+									rel="noreferrer"
+									aria-label={label}
+									title={label}
+									class="link-button"
+								>
+									<span class="link-button-icon" aria-hidden="true">
+										{
+											key === 'arxiv' ? (
+												<Icon name="notes" size="1rem" color="currentColor" />
+											) : key === 'website' ? (
+												<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" set:html={websiteIcon} />
+											) : (
+												<Icon name={key === 'youtube' ? 'youtube' : 'github'} size="1rem" color="currentColor" />
+											)
+										}
+									</span>
+									<span class="link-button-label">{label}</span>
+								</a>
+							))}
+						</div>
+					)
+				}
+
+				{
+					platformSections.length > 0 && (
+						<div class="platform-section-list">
+							{platformSections.map((section) => (
+								<section class="platform-section">
+									<h2 class="platform-section-title">{section.title}</h2>
+									<div class="platform-card-list">
+										{section.items.map((item) =>
+											item.href ? (
+												<a
+													href={item.href}
+													target="_blank"
+													rel="noreferrer"
+													class:list={[
+														'platform-card',
+														'platform-card-link',
+														{ 'platform-card-compact': !item.thumbnail },
+													]}
+													style={item.thumbnail ? `--platform-bg-image: url(${item.thumbnail})` : undefined}
+												>
+													{item.thumbnail && <div class="platform-card-media" aria-hidden="true"></div>}
+													<div class="platform-card-body">
+														<div class="platform-card-row">
+															<div class="platform-card-name">{item.name}</div>
+															<Icon name="external" size="0.9rem" color="currentColor" />
+														</div>
+													</div>
+												</a>
+											) : (
+												<div
+													class:list={['platform-card', { 'platform-card-compact': !item.thumbnail }]}
+													style={item.thumbnail ? `--platform-bg-image: url(${item.thumbnail})` : undefined}
+												>
+													{item.thumbnail && <div class="platform-card-media" aria-hidden="true"></div>}
+													<div class="platform-card-body">
+														<div class="platform-card-name">{item.name}</div>
+													</div>
+												</div>
+											)
+										)}
+									</div>
+								</section>
+							))}
+						</div>
+					)
+				}
+			</div>
+		</aside>
+	)
+}
+
+<style>
+	@layer starlight.core {
+		.link-rail {
+			display: none;
+		}
+
+		@media (min-width: 50rem) {
+			.link-rail {
+				display: block;
+				position: fixed;
+				inset-block: var(--sl-nav-height) 0;
+				inset-inline-start: 0;
+				width: var(--paper-link-rail-width);
+				border-inline-end: 1px solid var(--sl-color-hairline);
+				background-color: var(--sl-color-bg);
+				z-index: calc(var(--sl-z-index-menu) - 1);
+				overflow-y: auto;
+				scrollbar-gutter: stable;
+			}
+
+			.link-rail-inner {
+				display: flex;
+				flex-direction: column;
+				gap: 0.85rem;
+				padding: 1rem;
+			}
+
+			.link-button-group {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+			}
+
+			.link-button {
+				display: flex;
+				align-items: center;
+				gap: 0.45rem;
+				height: 2rem;
+				border-radius: 0.5rem;
+				padding: 0 0.5rem;
+				color: var(--sl-color-text);
+				text-decoration: none;
+				transition:
+					background-color 0.2s ease,
+					transform 0.2s ease;
+			}
+
+			.link-button:hover {
+				background: rgb(156 163 175 / 0.3);
+			}
+
+			.link-button:active {
+				transform: scale(0.98);
+			}
+
+			.link-button:focus-visible {
+				outline-offset: 1px;
+			}
+
+			.link-button-icon {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 1rem;
+				height: 1rem;
+				flex: 0 0 1rem;
+			}
+
+			.link-button-label {
+				font-size: 0.8125rem;
+				font-weight: 500;
+				line-height: 1;
+			}
+
+			.platform-section-list {
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+				margin-top: 0.6rem;
+				padding-top: 1rem;
+				border-top: 1px solid var(--sl-color-hairline);
+			}
+
+			.platform-section {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+			}
+
+			.platform-section-title {
+				margin: 0;
+				padding-inline: 0.25rem;
+				font-size: 0.72rem;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				color: var(--sl-color-text-accent);
+			}
+
+			.platform-card-list {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+			}
+
+			.platform-card {
+				display: flex;
+				position: relative;
+				align-items: stretch;
+				height: 4rem;
+				border: 1px solid var(--sl-color-hairline);
+				border-radius: 0.6rem;
+				background: color-mix(in srgb, var(--sl-color-bg) 70%, transparent);
+				overflow: hidden;
+				text-decoration: none;
+				color: var(--sl-color-text);
+			}
+
+			.platform-card-link {
+				transition: transform 0.2s ease;
+			}
+
+			.platform-card-link::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: rgb(156 163 175 / 0.3);
+				opacity: 0;
+				z-index: 2;
+				pointer-events: none;
+				transition: opacity 0.2s ease;
+			}
+
+			.platform-card-link:hover::after {
+				opacity: 1;
+			}
+
+			.platform-card-link:active {
+				transform: scale(0.985);
+			}
+
+			.platform-card-compact {
+				height: 2.4rem;
+			}
+
+			.platform-card-media {
+				position: absolute;
+				inset: 0;
+				background-image:
+					linear-gradient(90deg, rgb(0 0 0 / 0.28) 0%, rgb(0 0 0 / 0.1) 30%, rgb(0 0 0 / 0) 70%),
+					var(--platform-bg-image);
+				background-position: left center;
+				background-repeat: no-repeat;
+				background-size: auto;
+				pointer-events: none;
+				z-index: 0;
+			}
+
+			.platform-card-body {
+				display: flex;
+				min-width: 0;
+				flex: 1;
+				align-items: center;
+				padding: 0 0.75rem;
+				margin-inline-start: 0.75rem;
+				position: relative;
+				z-index: 1;
+			}
+
+			.platform-card-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+				width: 100%;
+			}
+
+			.platform-card-name {
+				font-size: 0.875rem;
+				font-weight: 600;
+				line-height: 1.25;
+				word-break: break-word;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
+
+			.platform-card-compact .platform-card-name {
+				font-size: 0.8125rem;
+				line-height: 1;
+				-webkit-line-clamp: 1;
+			}
+		}
+	}
+</style>

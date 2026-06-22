@@ -1,0 +1,151 @@
+---
+import MobileMenuToggle from 'virtual:starlight/components/MobileMenuToggle';
+import PaperLinkRail from './PaperLinkRail.astro';
+
+function normalizeEntryField<T extends Record<string, unknown>>(value: T | T[] | undefined) {
+	return (Array.isArray(value) ? Object.assign({}, ...value) : value) ?? {};
+}
+
+const { hasSidebar, entry } = Astro.locals.starlightRoute;
+const hideSidebar = entry.data.hideSidebar === true;
+const showSidebar = hasSidebar && !hideSidebar;
+const normalizedLinks = normalizeEntryField(entry.data.link);
+const normalizedPlatform = normalizeEntryField(entry.data.platform);
+const hasLinks = Object.values(normalizedLinks).some(
+	(value) => typeof value === 'string' && value.length > 0
+);
+const hasPlatforms = Object.values(normalizedPlatform).some((value) =>
+	Array.isArray(value)
+		? value.length > 0
+		: typeof value === 'string' && value.trim().length > 0
+);
+const showLinkRail = hideSidebar && (hasLinks || hasPlatforms);
+---
+
+<div
+	class:list={[
+		'page',
+		'sl-flex',
+		{
+			'no-left-sidebar': hideSidebar,
+			'has-link-rail': showLinkRail,
+		},
+	]}
+>
+	<header class="header"><slot name="header" /></header>
+	{
+		showLinkRail && (
+			<PaperLinkRail
+				links={normalizedLinks}
+				platform={normalizedPlatform}
+				locale={Astro.locals.starlightRoute.locale ?? Astro.locals.starlightRoute.lang}
+			/>
+		)
+	}
+	{
+		showSidebar && (
+			<nav class="sidebar print:hidden" aria-label={Astro.locals.t('sidebarNav.accessibleLabel')}>
+				<MobileMenuToggle />
+				<div id="starlight__sidebar" class="sidebar-pane">
+					<div class="sidebar-content sl-flex">
+						<slot name="sidebar" />
+					</div>
+				</div>
+			</nav>
+		)
+	}
+	<div class="main-frame"><slot /></div>
+</div>
+
+<style>
+	@layer starlight.core {
+		.page {
+			flex-direction: column;
+			min-height: 100vh;
+		}
+
+		.header {
+			z-index: var(--sl-z-index-navbar);
+			position: fixed;
+			inset-inline-start: 0;
+			inset-block-start: 0;
+			width: 100%;
+			height: var(--sl-nav-height);
+			border-bottom: 1px solid var(--sl-color-hairline);
+			padding: var(--sl-nav-pad-y) var(--sl-nav-pad-x);
+			background-color: var(--sl-color-bg-nav);
+		}
+
+		:global([data-has-sidebar]) .header {
+			padding-inline-end: calc(
+				var(--sl-nav-gap) + var(--sl-nav-pad-x) + var(--sl-menu-button-size)
+			);
+		}
+
+		.no-left-sidebar {
+			--sl-content-inline-start: 0;
+			--sl-content-width: 67.5rem;
+			--paper-link-rail-width: 14rem;
+		}
+
+		.no-left-sidebar .header {
+			padding-inline-end: var(--sl-nav-pad-x);
+		}
+
+		.no-left-sidebar :global([aria-controls='starlight__sidebar']) {
+			display: none;
+		}
+
+		.sidebar-pane {
+			visibility: var(--sl-sidebar-visibility, hidden);
+			position: fixed;
+			z-index: var(--sl-z-index-menu);
+			inset-block: var(--sl-nav-height) 0;
+			inset-inline-start: 0;
+			width: 100%;
+			background-color: var(--sl-color-bg);
+			overflow-y: auto;
+			scrollbar-gutter: stable;
+		}
+
+		:global([aria-expanded='true']) ~ .sidebar-pane {
+			--sl-sidebar-visibility: visible;
+		}
+
+		.sidebar-content {
+			height: 100%;
+			min-height: max-content;
+			padding: 1rem var(--sl-sidebar-pad-x) 0;
+			flex-direction: column;
+			gap: 1rem;
+		}
+
+		@media (min-width: 50rem) {
+			.sidebar-content::after {
+				content: '';
+				padding-bottom: 1px;
+			}
+		}
+
+		.main-frame {
+			padding-top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
+			padding-inline-start: var(--sl-content-inline-start);
+		}
+
+		@media (min-width: 50rem) {
+			.no-left-sidebar.has-link-rail {
+				--sl-content-inline-start: var(--paper-link-rail-width);
+			}
+
+			:global([data-has-sidebar]) .header {
+				padding-inline-end: var(--sl-nav-pad-x);
+			}
+
+			.sidebar-pane {
+				--sl-sidebar-visibility: visible;
+				width: var(--sl-sidebar-width);
+				border-inline-end: 1px solid var(--sl-color-hairline);
+			}
+		}
+	}
+</style>
