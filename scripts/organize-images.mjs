@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -66,6 +67,20 @@ async function ensureFileExists(filePath) {
 	}
 }
 
+function shouldConvertToWebP(ext) {
+	const lower = ext.toLowerCase();
+	return ['.png', '.jpg', '.jpeg'].includes(lower);
+}
+
+function getWebPAvailable() {
+	try {
+		execSync('cwebp -version', { stdio: 'ignore' });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 async function main() {
 	const markdownArg = process.argv[2];
 	if (!markdownArg) {
@@ -90,6 +105,7 @@ async function main() {
 	}
 
 	const uniqueReferences = [...new Set(references)];
+	const webPAvailable = getWebPAvailable();
 	let nextIndex = 1;
 	let markdownNext = markdownRaw;
 
@@ -101,16 +117,25 @@ async function main() {
 		}
 
 		const extension = path.extname(sourcePath).toLowerCase();
+		const doConvert = webPAvailable && shouldConvertToWebP(extension);
+		const finalExt = doConvert ? '.webp' : extension;
 		let targetPath;
 		let publicPath;
 
 		do {
-			targetPath = path.join(targetDir, `${nextIndex}${extension}`);
-			publicPath = `/papers/${folderName}/${nextIndex}${extension}`;
+			targetPath = path.join(targetDir, `${nextIndex}${finalExt}`);
+			publicPath = `/papers/${folderName}/${nextIndex}${finalExt}`;
 			nextIndex += 1;
 		} while (await ensureFileExists(targetPath));
 
-		await fs.rename(sourcePath, targetPath);
+		if (doConvert) {
+			const tmpPath = targetPath + '.tmp';
+			await fs.rename(sourcePath, tmpPath);
+			execSync(`cwebp -q 85 "${tmpPath}" -o "${targetPath}"`, { stdio: 'ignore' });
+			await fs.unlink(tmpPath);
+		} else {
+			await fs.rename(sourcePath, targetPath);
+		}
 		markdownNext = replaceImageReference(markdownNext, reference, publicPath);
 		console.log(`${reference} -> ${publicPath}`);
 	}

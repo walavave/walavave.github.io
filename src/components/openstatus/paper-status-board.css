@@ -97,6 +97,8 @@
 	border: 1px solid var(--psb-border);
 	border-radius: 0.75rem;
 	background: var(--psb-card);
+	min-width: 0;
+	overflow: hidden;
 }
 
 .psb-filter-menu {
@@ -171,11 +173,6 @@
 	font-size: 0.68rem;
 }
 
-.psb-table-card {
-	min-width: 0;
-	overflow: hidden;
-}
-
 .psb-table-scroll {
 	overflow-x: auto;
 }
@@ -204,9 +201,7 @@
 }
 
 .psb-table th.psb-col-title {
-	width: 22rem;
 	min-width: 18rem;
-	max-width: 22rem;
 	text-align: left;
 }
 
@@ -220,8 +215,6 @@
 
 .psb-table td.psb-col-title {
 	width: 22rem;
-	min-width: 18rem;
-	max-width: 22rem;
 	white-space: normal;
 	text-align: left;
 }
@@ -285,7 +278,6 @@
 	line-height: 1.35;
 	text-decoration: none;
 	overflow-wrap: anywhere;
-	word-break: break-word;
 }
 
 .psb-paper-title:hover {

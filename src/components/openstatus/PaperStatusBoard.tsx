@@ -45,7 +45,6 @@ interface PaperStatusBoardLabels {
 		links: string;
 		publish: string;
 			jc: string;
-
 		train: string;
 		simulate: string;
 		deploy: string;
