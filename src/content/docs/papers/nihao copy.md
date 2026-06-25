@@ -2,13 +2,13 @@
 title: 干他
 description: A guide in my new Starlight docs site.
 hideSidebar: true
+publish: '2024-06-01'
 link:
   - arxiv: https://arxiv.org/
   - website: https://example.com
   - youtube: https://www.youtube.com/
-  - github: https://github.com/
 platform:
-  - train: Nvidia H100
+  - train: GTX 4090
   - simulate:
       - Isaac Lab
       - Mujoco

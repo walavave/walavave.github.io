@@ -1,32 +1,21 @@
 ---
-const title = Astro.locals.starlightRoute.entry.data.title;
-const locale = Astro.locals.starlightRoute.locale ?? Astro.locals.starlightRoute.lang ?? 'root';
-const isChinese = locale.toLowerCase().startsWith('zh');
+const { entry } = Astro.locals.starlightRoute;
+const title = entry.data.title;
+const isSplash = entry.data.template === 'splash';
 const pathname = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const markdownUrl = `${pathname}index.md`;
 const pageTitleId = '_top';
-
-const labels = isChinese
-	? {
-			copy: '复制页面',
-			copied: '已复制',
-			view: '查看 Markdown',
-			chatgpt: '在 ChatGPT 中打开',
-			claude: '在 Claude 中打开',
-			lechat: '在 Le Chat 中打开',
-			grok: '在 Grok 中打开',
-			openMenu: '打开上下文菜单',
-		}
-	: {
-			copy: 'Copy page',
-			copied: 'Copied!',
-			view: 'View as Markdown',
-			chatgpt: 'Open in ChatGPT',
-			claude: 'Open in Claude',
-			lechat: 'Open in Le Chat',
-			grok: 'Open in Grok',
-			openMenu: 'Open contextual menu',
-		};
+const labels = {
+	copy: Astro.locals.t('pageTitle.copy'),
+	copied: Astro.locals.t('pageTitle.copied'),
+	view: Astro.locals.t('pageTitle.view'),
+	chatgpt: Astro.locals.t('pageTitle.chatgpt'),
+	claude: Astro.locals.t('pageTitle.claude'),
+	lechat: Astro.locals.t('pageTitle.lechat'),
+	grok: Astro.locals.t('pageTitle.grok'),
+	openMenu: Astro.locals.t('pageTitle.openMenu'),
+	assistantPrompt: Astro.locals.t('pageTitle.assistantPrompt'),
+};
 
 const copyIcon = `
 	<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -70,40 +59,47 @@ const menuItems = [
 const primaryAction = menuItems[0];
 ---
 
-<div class="paper-page-title-row">
-	<h1 id={pageTitleId}>{title}</h1>
-	<div
-		class="paper-contextual-menu"
-		data-paper-contextual-menu
-		data-markdown-url={markdownUrl}
-		data-copied-label={labels.copied}
-		data-open="false"
-	>
-		<button type="button" class="paper-contextual-main-action" data-action={primaryAction.id}>
-			<span class="paper-contextual-icon" set:html={primaryAction.icon} />
-			<span data-button-label>{primaryAction.label}</span>
-		</button>
-		<button
-			type="button"
-			class="paper-contextual-trigger"
-			data-contextual-trigger
-			aria-label={labels.openMenu}
-			aria-expanded="false"
-			aria-haspopup="menu"
-		>
-			<span class="paper-contextual-icon" set:html={moreIcon} />
-		</button>
-		<div class="paper-contextual-dropdown" data-contextual-dropdown hidden>
-			{
-				menuItems.map((item) => (
-					<button type="button" class="paper-contextual-menu-item" data-action={item.id} role="menuitem">
-						<span class="paper-contextual-icon" set:html={item.icon} />
-						<span data-button-label>{item.label}</span>
-					</button>
-				))
-			}
-		</div>
+<div class="paper-page-title-block">
+	<div class="paper-page-title-row">
+		<h1 id={pageTitleId}>{title}</h1>
 	</div>
+	{!isSplash && (
+		<div class="paper-page-title-actions">
+			<div
+				class="paper-contextual-menu"
+				data-paper-contextual-menu
+				data-markdown-url={markdownUrl}
+				data-copied-label={labels.copied}
+				data-assistant-prompt={labels.assistantPrompt}
+				data-open="false"
+			>
+				<button type="button" class="paper-contextual-main-action" data-action={primaryAction.id}>
+					<span class="paper-contextual-icon" set:html={primaryAction.icon} />
+					<span data-button-label>{primaryAction.label}</span>
+				</button>
+				<button
+					type="button"
+					class="paper-contextual-trigger"
+					data-contextual-trigger
+					aria-label={labels.openMenu}
+					aria-expanded="false"
+					aria-haspopup="menu"
+				>
+					<span class="paper-contextual-icon" set:html={moreIcon} />
+				</button>
+				<div class="paper-contextual-dropdown" data-contextual-dropdown hidden>
+					{
+						menuItems.map((item) => (
+							<button type="button" class="paper-contextual-menu-item" data-action={item.id} role="menuitem">
+								<span class="paper-contextual-icon" set:html={item.icon} />
+								<span data-button-label>{item.label}</span>
+							</button>
+						))
+					}
+				</div>
+			</div>
+		</div>
+	)}
 </div>
 
 <script is:inline>
@@ -150,7 +146,12 @@ const primaryAction = menuItems[0];
 	}
 
 	function buildAssistantUrl(actionId, pageUrl) {
-		const query = encodeURIComponent(`Read from ${pageUrl} so I can ask questions about it.`);
+		const menu = document.querySelector(menuSelector);
+		const promptTemplate =
+			menu instanceof HTMLElement
+				? menu.dataset.assistantPrompt || 'Read from {{url}} so I can ask questions about it.'
+				: 'Read from {{url}} so I can ask questions about it.';
+		const query = encodeURIComponent(promptTemplate.replace('{{url}}', pageUrl));
 		switch (actionId) {
 			case 'chatgpt':
 				return `https://chat.openai.com/?q=${query}`;
@@ -272,12 +273,13 @@ const primaryAction = menuItems[0];
 
 <style>
 	@layer starlight.core {
+		.paper-page-title-block {
+			display: grid;
+			gap: 0.75rem;
+		}
+
 		.paper-page-title-row {
-			display: flex;
-			align-items: flex-start;
-			justify-content: space-between;
-			gap: 1rem;
-			flex-wrap: wrap;
+			display: block;
 		}
 
 		.paper-page-title-row > h1 {
@@ -290,12 +292,16 @@ const primaryAction = menuItems[0];
 			min-width: 0;
 		}
 
+		.paper-page-title-actions {
+			display: flex;
+			align-items: flex-start;
+			margin-top: -0.1rem;
+		}
+
 		.paper-contextual-menu {
 			position: relative;
 			display: inline-flex;
 			align-items: stretch;
-			margin-top: 1rem;
-			margin-inline-start: auto;
 		}
 
 		.paper-contextual-main-action,
@@ -399,14 +405,6 @@ const primaryAction = menuItems[0];
 		}
 
 		@media (max-width: 72rem) {
-			.paper-page-title-row {
-				flex-direction: column;
-			}
-
-			.paper-contextual-menu {
-				margin-inline-start: 0;
-			}
-
 			.paper-contextual-dropdown {
 				inset-inline-start: 0;
 				inset-inline-end: auto;

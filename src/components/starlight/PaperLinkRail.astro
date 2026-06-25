@@ -17,46 +17,18 @@ interface PlatformConfig {
 	deploy?: string | string[];
 }
 
-const { links, platform, locale } = Astro.props as {
+const { links, platform } = Astro.props as {
 	links?: LinkConfig | LinkConfig[];
 	platform?: PlatformConfig | PlatformConfig[];
-	locale?: string;
 };
-
-const isChinese = (locale ?? 'root').toLowerCase().startsWith('zh');
-
-const messages = {
-	root: {
-		railLabel: 'Article links and platforms',
-		arxiv: 'arXiv',
-		website: 'Website',
-		youtube: 'YouTube',
-		github: 'GitHub',
-		train: 'Train',
-		simulate: 'Simulate',
-		deploy: 'Deploy',
-	},
-	'zh-CN': {
-		railLabel: '文章链接与平台',
-		arxiv: 'arXiv',
-		website: '官网',
-		youtube: 'YouTube',
-		github: 'GitHub',
-		train: '训练',
-		simulate: '仿真',
-		deploy: '部署',
-	},
-} as const;
-
-const t = isChinese ? messages['zh-CN'] : messages.root;
 
 const normalizedLinks = (Array.isArray(links) ? Object.assign({}, ...links) : links) ?? {};
 
 const railLinks = [
-	{ key: 'arxiv', href: normalizedLinks.arxiv, label: t.arxiv },
-	{ key: 'website', href: normalizedLinks.website, label: t.website },
-	{ key: 'youtube', href: normalizedLinks.youtube, label: t.youtube },
-	{ key: 'github', href: normalizedLinks.github, label: t.github },
+	{ key: 'arxiv', href: normalizedLinks.arxiv, label: Astro.locals.t('paperLinkRail.arxiv') },
+	{ key: 'website', href: normalizedLinks.website, label: Astro.locals.t('paperLinkRail.website') },
+	{ key: 'youtube', href: normalizedLinks.youtube, label: Astro.locals.t('paperLinkRail.youtube') },
+	{ key: 'github', href: normalizedLinks.github, label: Astro.locals.t('paperLinkRail.github') },
 ].filter((item) => item.href);
 
 const rawPlatform = (Array.isArray(platform) ? Object.assign({}, ...platform) : platform) ?? {};
@@ -77,9 +49,9 @@ function resolveThumbnail(publicPath: string | undefined) {
 }
 
 const platformSections = [
-	{ title: t.train, items: normalizePlatformNames(rawPlatform.train) },
-	{ title: t.simulate, items: normalizePlatformNames(rawPlatform.simulate) },
-	{ title: t.deploy, items: normalizePlatformNames(rawPlatform.deploy) },
+	{ title: Astro.locals.t('paperLinkRail.train'), items: normalizePlatformNames(rawPlatform.train) },
+	{ title: Astro.locals.t('paperLinkRail.simulate'), items: normalizePlatformNames(rawPlatform.simulate) },
+	{ title: Astro.locals.t('paperLinkRail.deploy'), items: normalizePlatformNames(rawPlatform.deploy) },
 ]
 	.map((section) => ({
 		...section,
@@ -105,7 +77,7 @@ const websiteIcon = `
 
 {
 	hasRailContent && (
-		<aside class="link-rail print:hidden" aria-label={t.railLabel}>
+		<aside class="link-rail print:hidden" aria-label={Astro.locals.t('paperLinkRail.railLabel')}>
 			<div class="link-rail-inner">
 				{
 					railLinks.length > 0 && (

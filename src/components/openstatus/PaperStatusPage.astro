@@ -1,0 +1,156 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { useTranslations } from '@astrojs/starlight/internal';
+import { getCollection } from 'astro:content';
+import config from 'virtual:starlight/user-config';
+import PaperStatusBoard from './PaperStatusBoard';
+
+const { locale = 'root' } = Astro.props as {
+	locale?: string;
+};
+
+function normalizeEntryField(value) {
+	return (Array.isArray(value) ? Object.assign({}, ...value) : value) ?? {};
+}
+
+function normalizeValues(value) {
+	if (!value) return [];
+	return (Array.isArray(value) ? value : [value])
+		.flatMap((entry) => entry.split(','))
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+}
+
+const lang = locale === 'root' ? config.defaultLocale.lang : config.locales?.[locale]?.lang;
+const t = useTranslations(lang);
+const sortLocale = lang?.startsWith('zh') ? 'zh-Hans-CN' : 'en';
+const docPathPrefix = locale && locale !== 'root' ? `/${locale}` : '';
+const localeKeys = new Set(['en']);
+
+function splitLocalizedId(id: string) {
+	const [first, ...rest] = id.split('/');
+	if (localeKeys.has(first) && rest.length > 0) {
+		return {
+			locale: first,
+			baseId: rest.join('/'),
+		};
+	}
+
+	return {
+		locale: 'root',
+		baseId: id,
+	};
+}
+
+const docs = await getCollection('docs');
+const papersByBaseId = new Map<string, (typeof docs)[number]>();
+
+for (const entry of docs) {
+	const { locale: entryLocale, baseId } = splitLocalizedId(entry.id);
+	if (!baseId.startsWith('papers/')) continue;
+
+	const current = papersByBaseId.get(baseId);
+	const wantsLocale = locale && locale !== 'root' ? locale : 'root';
+
+	if (!current) {
+		papersByBaseId.set(baseId, entry);
+		continue;
+	}
+
+	const currentLocale = splitLocalizedId(current.id).locale;
+	if (entryLocale === wantsLocale && currentLocale !== wantsLocale) {
+		papersByBaseId.set(baseId, entry);
+	}
+}
+
+const papers = [...papersByBaseId.values()]
+	.map((entry) => {
+		const { baseId } = splitLocalizedId(entry.id);
+		const links = normalizeEntryField(entry.data.link);
+		const platform = normalizeEntryField(entry.data.platform);
+		return {
+			id: baseId,
+			title: entry.data.title,
+			href: `${docPathPrefix}/${baseId}/`,
+			publish: entry.data.publish ?? '',
+			jc: entry.data.jc ? [entry.data.jc] : [],
+			links: [
+				{ key: 'arxiv', label: t('paperStatus.link.arxiv'), href: links.arxiv },
+				{ key: 'website', label: t('paperStatus.link.website'), href: links.website },
+				{ key: 'youtube', label: t('paperStatus.link.youtube'), href: links.youtube },
+				{ key: 'github', label: t('paperStatus.link.github'), href: links.github },
+			],
+			train: normalizeValues(platform.train),
+			simulate: normalizeValues(platform.simulate),
+			deploy: normalizeValues(platform.deploy),
+			tags: normalizeValues(entry.data.tags),
+		};
+	})
+	.sort((a, b) => a.title.localeCompare(b.title, sortLocale));
+
+const labels = {
+	tableAriaLabel: t('paperStatus.tableAriaLabel'),
+	filtersAriaLabel: t('paperStatus.filtersAriaLabel'),
+	searchPlaceholder: t('paperStatus.searchPlaceholder'),
+	resetFilters: t('paperStatus.resetFilters'),
+	emptyOptions: t('paperStatus.emptyOptions'),
+	emptyState: t('paperStatus.emptyState'),
+	resultCount: t('paperStatus.resultCount'),
+	totalCount: t('paperStatus.totalCount'),
+	filters: {
+		jc: t('paperStatus.filter.jc'),
+		tags: t('paperStatus.filter.tags'),
+		train: t('paperStatus.filter.train'),
+		simulate: t('paperStatus.filter.simulate'),
+		deploy: t('paperStatus.filter.deploy'),
+	},
+	columns: {
+		paper: t('paperStatus.column.paper'),
+		links: t('paperStatus.column.links'),
+		publish: t('paperStatus.column.publish'),
+		jc: t('paperStatus.column.jc'),
+		train: t('paperStatus.column.train'),
+		simulate: t('paperStatus.column.simulate'),
+		deploy: t('paperStatus.column.deploy'),
+		tags: t('paperStatus.column.tags'),
+	},
+};
+---
+
+<StarlightPage
+	frontmatter={{
+		title: t('paperStatus.title'),
+		description: t('paperStatus.description'),
+		template: 'splash',
+		editUrl: false,
+	}}
+>
+	<div class="paper-status-board-wrapper not-content">
+		<PaperStatusBoard client:load papers={papers} labels={labels} />
+	</div>
+</StarlightPage>
+
+<style>
+	.sl-container:has(.paper-status-board-wrapper) {
+		max-width: none;
+	}
+
+	.paper-status-board-wrapper {
+		overflow-x: auto;
+	}
+
+	:global(main:has(.paper-status-board-wrapper) h1#_top) {
+		margin-top: 0.25rem;
+		font-size: clamp(var(--sl-text-xl), calc(0.8rem + 1.2vw), var(--sl-text-3xl));
+	}
+
+	@media (min-width: 50rem) {
+		:global(main:has(.paper-status-board-wrapper) .content-panel:first-of-type) {
+			padding-block: 0.75rem 0.5rem;
+		}
+
+		:global(main:has(.paper-status-board-wrapper) .content-panel + .content-panel) {
+			padding-top: 0.75rem;
+		}
+	}
+</style>

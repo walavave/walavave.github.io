@@ -10,6 +10,7 @@ import {
 import './paper-status-board.css';
 
 export interface PaperBoardLink {
+	key: 'arxiv' | 'website' | 'youtube' | 'github';
 	label: string;
 	href?: string;
 }
@@ -18,6 +19,8 @@ export interface PaperBoardItem {
 	id: string;
 	title: string;
 	href: string;
+	publish: string;
+	jc: string[];
 	links: PaperBoardLink[];
 	train: string[];
 	simulate: string[];
@@ -25,17 +28,92 @@ export interface PaperBoardItem {
 	tags: string[];
 }
 
-interface PaperStatusBoardProps {
-	papers: PaperBoardItem[];
+type ArrayFilterKey = 'tags' | 'train' | 'simulate' | 'deploy' | 'jc';
+
+interface PaperStatusBoardLabels {
+	tableAriaLabel: string;
+	filtersAriaLabel: string;
+	searchPlaceholder: string;
+	resetFilters: string;
+	emptyOptions: string;
+	emptyState: string;
+	resultCount: string;
+	totalCount: string;
+	filters: Record<ArrayFilterKey, string>;
+	columns: {
+		paper: string;
+		links: string;
+		publish: string;
+			jc: string;
+
+		train: string;
+		simulate: string;
+		deploy: string;
+		tags: string;
+	};
 }
 
-type ArrayFilterKey = 'tags' | 'train' | 'simulate' | 'deploy';
+interface PaperStatusBoardProps {
+	papers: PaperBoardItem[];
+	labels: PaperStatusBoardLabels;
+}
 
-const ARRAY_FILTERS: { id: ArrayFilterKey; label: string }[] = [
-	{ id: 'tags', label: '研究方向' },
-	{ id: 'train', label: 'Train' },
-	{ id: 'simulate', label: 'Simulate' },
-	{ id: 'deploy', label: 'Deploy' },
+const websiteIconPath = (
+	<g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+		<circle cx="12" cy="12" r="9" />
+		<path d="M3 12h18" />
+		<path d="M12 3a15 15 0 0 1 0 18" />
+		<path d="M12 3a15 15 0 0 0 0 18" />
+	</g>
+);
+
+function LinkIcon({ kind }: { kind: PaperBoardLink['key'] }) {
+	if (kind === 'arxiv') {
+		return (
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path
+					fill="currentColor"
+					d="M6.75 3A2.75 2.75 0 0 0 4 5.75v12.5A2.75 2.75 0 0 0 6.75 21h10.5A2.75 2.75 0 0 0 20 18.25V8.56a2.75 2.75 0 0 0-.8-1.95l-2.81-2.8A2.75 2.75 0 0 0 14.45 3H6.75Zm0 1.5h7.5v3.25c0 .97.78 1.75 1.75 1.75h2.5v8.75c0 .69-.56 1.25-1.25 1.25H6.75c-.69 0-1.25-.56-1.25-1.25V5.75c0-.69.56-1.25 1.25-1.25Zm9 .56 2.19 2.19c.14.14.24.31.31.5H16a.25.25 0 0 1-.25-.25V5.06ZM8 11.25c0-.41.34-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 8 11.25Zm0 3.5c0-.41.34-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 8 14.75Zm0 3.5c0-.41.34-.75.75-.75h4a.75.75 0 0 1 0 1.5h-4A.75.75 0 0 1 8 18.25Z"
+				/>
+			</svg>
+		);
+	}
+
+	if (kind === 'website') {
+		return (
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				{websiteIconPath}
+			</svg>
+		);
+	}
+
+	if (kind === 'youtube') {
+		return (
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path
+					fill="currentColor"
+					d="M21.58 7.19a2.97 2.97 0 0 0-2.09-2.1C17.64 4.58 12 4.58 12 4.58s-5.64 0-7.49.5a2.97 2.97 0 0 0-2.09 2.1C1.92 9.04 1.92 12 1.92 12s0 2.96.5 4.81a2.97 2.97 0 0 0 2.09 2.1c1.85.5 7.49.5 7.49.5s5.64 0 7.49-.5a2.97 2.97 0 0 0 2.09-2.1c.5-1.85.5-4.81.5-4.81s0-2.96-.5-4.81ZM10.2 15.06V8.94L15.55 12l-5.35 3.06Z"
+				/>
+			</svg>
+		);
+	}
+
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				fill="currentColor"
+				d="M12 .5C5.65.5.5 5.8.5 12.33c0 5.22 3.3 9.65 7.88 11.21.58.11.79-.26.79-.58 0-.29-.01-1.06-.02-2.08-3.2.72-3.88-1.6-3.88-1.6-.52-1.37-1.28-1.73-1.28-1.73-1.05-.74.08-.73.08-.73 1.16.09 1.77 1.25 1.77 1.25 1.03 1.84 2.7 1.31 3.35 1 .1-.77.4-1.31.72-1.61-2.56-.3-5.26-1.33-5.26-5.94 0-1.31.45-2.38 1.19-3.22-.12-.3-.52-1.51.11-3.15 0 0 .97-.32 3.19 1.23A10.7 10.7 0 0 1 12 5.89c.95 0 1.91.13 2.81.38 2.22-1.55 3.19-1.23 3.19-1.23.64 1.64.24 2.85.12 3.15.74.84 1.19 1.91 1.19 3.22 0 4.62-2.7 5.63-5.28 5.93.41.37.78 1.11.78 2.24 0 1.62-.02 2.93-.02 3.33 0 .32.21.69.8.58 4.57-1.56 7.87-5.99 7.87-11.21C23.5 5.8 18.35.5 12 .5Z"
+			/>
+		</svg>
+	);
+}
+
+const ARRAY_FILTERS: ArrayFilterKey[] = [
+	'jc',
+	'tags',
+	'train',
+	'simulate',
+	'deploy',
 ];
 
 function collectFacetOptions(papers: PaperBoardItem[], key: ArrayFilterKey) {
@@ -57,6 +135,10 @@ function arrayIncludesAny(rowValues: string[], filterValue: unknown) {
 
 function toggleArrayValue(values: string[], value: string) {
 	return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function formatMessage(template: string, values: Record<string, string | number>) {
+	return template.replace(/\{(\w+)\}/g, (_match, key) => String(values[key] ?? ''));
 }
 
 function SortHeader({
@@ -106,10 +188,11 @@ function ChipList({
 	);
 }
 
-export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
+export function PaperStatusBoard({ papers, labels }: PaperStatusBoardProps) {
 	const [search, setSearch] = useState('');
 	const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+	const [openFilter, setOpenFilter] = useState<ArrayFilterKey | null>(null);
 
 	const filteredBySearch = useMemo(() => {
 		const query = search.trim().toLowerCase();
@@ -117,6 +200,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 		return papers.filter((paper) => {
 			const fields = [
 				paper.title,
+				paper.publish,
 				...paper.tags,
 				...paper.train,
 				...paper.simulate,
@@ -128,15 +212,15 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 
 	const facetOptions = useMemo(() => {
 		return Object.fromEntries(
-			ARRAY_FILTERS.map((filter) => [filter.id, collectFacetOptions(filteredBySearch, filter.id)]),
+			ARRAY_FILTERS.map((filter) => [filter, collectFacetOptions(filteredBySearch, filter)]),
 		) as Record<ArrayFilterKey, { value: string; count: number }[]>;
 	}, [filteredBySearch]);
 
 	const selectedFilters = useMemo(() => {
 		return Object.fromEntries(
 			ARRAY_FILTERS.map((filter) => {
-				const value = columnFilters.find((item) => item.id === filter.id)?.value;
-				return [filter.id, Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []];
+				const value = columnFilters.find((item) => item.id === filter)?.value;
+				return [filter, Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []];
 			}),
 		) as Record<ArrayFilterKey, string[]>;
 	}, [columnFilters]);
@@ -155,6 +239,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 	function resetFilters() {
 		setSearch('');
 		setColumnFilters([]);
+		setOpenFilter(null);
 	}
 
 	const columns = useMemo<ColumnDef<PaperBoardItem>[]>(() => [
@@ -167,30 +252,94 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 					className="psb-head-button"
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
 				>
-					<SortHeader sorted={column.getIsSorted()}>Paper</SortHeader>
+					<SortHeader sorted={column.getIsSorted()}>{labels.columns.paper}</SortHeader>
 				</button>
 			),
 			cell: ({ row }) => {
 				const paper = row.original;
-				const links = paper.links.filter((link) => link.href);
 				return (
 					<div className="psb-paper-cell">
 						<a href={paper.href} className="psb-paper-title">
 							{paper.title}
 						</a>
-						{links.length > 0 && (
-							<div className="psb-paper-links">
-								{links.map((link) => (
-									<a key={link.label} href={link.href} target="_blank" rel="noreferrer">
-										{link.label}
-									</a>
-								))}
-							</div>
-						)}
 					</div>
 				);
 			},
 			size: 320,
+		},
+		{
+			id: 'links',
+			accessorFn: (row) => row.links.filter((link) => link.href).length,
+			header: labels.columns.links,
+			cell: ({ row }) => {
+				const paper = row.original;
+				return (
+					<div className="psb-paper-links" aria-label={`${paper.title} links`}>
+						{paper.links.map((link) => (
+							link.href ? (
+								<a
+									key={link.key}
+									href={link.href}
+									target="_blank"
+									rel="noreferrer"
+									aria-label={link.label}
+									title={link.label}
+									className="psb-paper-link-icon"
+								>
+									<LinkIcon kind={link.key} />
+								</a>
+							) : (
+								<span
+									key={link.key}
+									aria-label={link.label}
+									title={link.label}
+									className="psb-paper-link-icon is-disabled"
+								>
+									<LinkIcon kind={link.key} />
+								</span>
+							)
+						))}
+					</div>
+				);
+			},
+			size: 132,
+		},
+		{
+			id: 'publish',
+			accessorKey: 'publish',
+			header: ({ column }) => (
+				<button
+					type="button"
+					className="psb-head-button"
+					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+				>
+					<SortHeader sorted={column.getIsSorted()}>{labels.columns.publish}</SortHeader>
+				</button>
+			),
+			cell: ({ row }) => row.original.publish || <span className="psb-empty">-</span>,
+			size: 140,
+		},
+		{
+			id: 'jc',
+			accessorFn: (row) => row.jc.length,
+			filterFn: (row, _id, value) => arrayIncludesAny(row.original.jc, value),
+			header: ({ column }) => (
+				<button
+					type="button"
+					className="psb-head-button"
+					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+				>
+					<SortHeader sorted={column.getIsSorted()}>{labels.columns.jc}</SortHeader>
+				</button>
+			),
+			cell: ({ row }) => (
+				<ChipList
+					values={row.original.jc}
+					activeValues={selectedFilters.jc}
+					onToggle={(value) => toggleFilterValue('jc', value)}
+				/>
+			),
+			size: 170,
 		},
 		{
 			id: 'train',
@@ -202,7 +351,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 					className="psb-head-button"
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
 				>
-					<SortHeader sorted={column.getIsSorted()}>Train</SortHeader>
+					<SortHeader sorted={column.getIsSorted()}>{labels.columns.train}</SortHeader>
 				</button>
 			),
 			cell: ({ row }) => (
@@ -224,7 +373,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 					className="psb-head-button"
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
 				>
-					<SortHeader sorted={column.getIsSorted()}>Simulate</SortHeader>
+					<SortHeader sorted={column.getIsSorted()}>{labels.columns.simulate}</SortHeader>
 				</button>
 			),
 			cell: ({ row }) => (
@@ -246,7 +395,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 					className="psb-head-button"
 					onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
 				>
-					<SortHeader sorted={column.getIsSorted()}>Deploy</SortHeader>
+					<SortHeader sorted={column.getIsSorted()}>{labels.columns.deploy}</SortHeader>
 				</button>
 			),
 			cell: ({ row }) => (
@@ -262,7 +411,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 			id: 'tags',
 			accessorKey: 'tags',
 			filterFn: (row, _id, value) => arrayIncludesAny(row.original.tags, value),
-			header: '研究方向',
+			header: labels.columns.tags,
 			cell: ({ row }) => (
 				<ChipList
 					values={row.original.tags}
@@ -273,7 +422,7 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 			enableSorting: false,
 			size: 180,
 		},
-	], [selectedFilters]);
+	], [labels.columns, selectedFilters]);
 
 	const table = useReactTable({
 		data: filteredBySearch,
@@ -293,104 +442,117 @@ export function PaperStatusBoard({ papers }: PaperStatusBoardProps) {
 	const hasFilters = search.trim().length > 0 || columnFilters.length > 0;
 
 	return (
-		<section className="psb" aria-label="Paper status table">
+		<section className="psb" aria-label={labels.tableAriaLabel}>
 			<div className="psb-toolbar">
 				<label className="psb-search">
 					<span className="psb-search-icon" aria-hidden="true">⌕</span>
 					<input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
-						placeholder="搜索标题、平台或标签..."
+						placeholder={labels.searchPlaceholder}
 					/>
 				</label>
-				{hasFilters && (
-					<button type="button" className="psb-reset" onClick={resetFilters}>
-						重置筛选
-					</button>
-				)}
-			</div>
-
-			<div className="psb-layout">
-				<aside className="psb-filters" aria-label="Table filters">
-					<div className="psb-filter-header">
-						<span>Filters</span>
-						<span>{rows.length}/{papers.length}</span>
-					</div>
+				<div className="psb-toolbar-filters" aria-label={labels.filtersAriaLabel}>
 					{ARRAY_FILTERS.map((filter) => (
-						<details key={filter.id} className="psb-filter" open={filter.id === 'tags' || filter.id === 'train'}>
-							<summary>
-								<span>{filter.label}</span>
-								{selectedFilters[filter.id].length > 0 && (
-									<span className="psb-filter-count">{selectedFilters[filter.id].length}</span>
+						<div
+							key={filter}
+							className={`psb-filter-menu ${openFilter === filter ? 'is-open' : ''}`}
+						>
+							<button
+								type="button"
+								className="psb-filter-trigger"
+								aria-expanded={openFilter === filter}
+								onClick={() =>
+									setOpenFilter((current) => (current === filter ? null : filter))
+								}
+							>
+								<span>{labels.filters[filter]}</span>
+								{selectedFilters[filter].length > 0 && (
+									<span className="psb-filter-count">{selectedFilters[filter].length}</span>
 								)}
-							</summary>
-							<div className="psb-filter-options">
-								{facetOptions[filter.id].length > 0 ? (
-									facetOptions[filter.id].map((option) => {
-										const checked = selectedFilters[filter.id].includes(option.value);
-										return (
-											<label key={option.value} className="psb-option">
-												<input
-													type="checkbox"
-													checked={checked}
-													onChange={() => toggleFilterValue(filter.id, option.value)}
-												/>
-												<span>{option.value}</span>
-												<span className="psb-option-count">{option.count}</span>
-											</label>
-										);
-									})
-								) : (
-									<span className="psb-no-options">无可用选项</span>
-								)}
-							</div>
-						</details>
+							</button>
+						</div>
 					))}
-				</aside>
+				</div>
+				<div className="psb-toolbar-meta">
+					<span className="psb-result-count">
+						{formatMessage(labels.resultCount, { shown: rows.length, total: papers.length })}
+					</span>
+					{hasFilters && (
+						<button type="button" className="psb-reset" onClick={resetFilters}>
+							{labels.resetFilters}
+						</button>
+					)}
+				</div>
+			</div>
+			{openFilter && (
+				<div className="psb-filter-panel" aria-label={labels.filters[openFilter]}>
+					<div className="psb-filter-chip-list">
+						{facetOptions[openFilter].length > 0 ? (
+							facetOptions[openFilter].map((option) => {
+								const active = selectedFilters[openFilter].includes(option.value);
+								return (
+									<button
+										key={option.value}
+										type="button"
+										className={`psb-chip ${active ? 'is-active' : ''}`}
+										onClick={() => toggleFilterValue(openFilter, option.value)}
+									>
+										<span className="psb-chip-label">{option.value}</span>
+										<span className="psb-chip-count">{option.count}</span>
+									</button>
+								);
+							})
+						) : (
+							<span className="psb-no-options">{labels.emptyOptions}</span>
+						)}
+					</div>
+				</div>
+			)}
 
-				<div className="psb-table-card">
-					<div className="psb-table-scroll">
-						<table className="psb-table">
-							<thead>
-								{table.getHeaderGroups().map((headerGroup) => (
-									<tr key={headerGroup.id}>
-										{headerGroup.headers.map((header) => (
-											<th
-												key={header.id}
-												style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-											>
-												{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-											</th>
+			<div className="psb-table-card">
+				<div className="psb-table-scroll">
+					<table className="psb-table">
+						<thead>
+							{table.getHeaderGroups().map((headerGroup) => (
+								<tr key={headerGroup.id}>
+									{headerGroup.headers.map((header) => (
+										<th
+											key={header.id}
+											className={header.column.id === 'title' ? 'psb-col-title' : undefined}
+											style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
+										>
+											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+										</th>
+									))}
+								</tr>
+							))}
+						</thead>
+						<tbody>
+							{rows.length > 0 ? (
+								rows.map((row) => (
+									<tr key={row.id}>
+										{row.getVisibleCells().map((cell) => (
+											<td key={cell.id} className={cell.column.id === 'title' ? 'psb-col-title' : undefined}>
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</td>
 										))}
 									</tr>
-								))}
-							</thead>
-							<tbody>
-								{rows.length > 0 ? (
-									rows.map((row) => (
-										<tr key={row.id}>
-											{row.getVisibleCells().map((cell) => (
-												<td key={cell.id}>
-													{flexRender(cell.column.columnDef.cell, cell.getContext())}
-												</td>
-											))}
-										</tr>
-									))
-								) : (
-									<tr>
-										<td colSpan={columns.length} className="psb-empty-state">
-											未找到匹配的论文
-										</td>
-									</tr>
-								)}
-							</tbody>
-						</table>
-					</div>
+								))
+							) : (
+								<tr>
+									<td colSpan={columns.length} className="psb-empty-state">
+										{labels.emptyState}
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
 				</div>
 			</div>
 
 			<div className="psb-footer">
-				共 {rows.length} 篇论文
+				{formatMessage(labels.totalCount, { count: rows.length })}
 			</div>
 		</section>
 	);
