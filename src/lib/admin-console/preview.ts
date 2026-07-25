@@ -201,9 +201,12 @@ const createPreviewProcessor = (collection: AdminContentCollectionKey, sourceFil
   const [
     rehypeProtectMath,
     rehypeRawHtml,
+    rehypeDetailsMarkdown,
+    rehypeProtectDetailsMath,
     rehypeRestoreMathBoundary,
     rehypeAbout,
     rehypeSanitizeSchema,
+    rehypeNumberEquations,
     rehypeRenderKatex
   ] = createProjectMarkdownRehypePlugins({
     aboutBase: previewBase,
@@ -223,10 +226,13 @@ const createPreviewProcessor = (collection: AdminContentCollectionKey, sourceFil
   useProcessorPlugin(processor, rehypeProtectMath);
   processor.use(rehypeShiki, previewShikiOptions);
   useProcessorPlugin(processor, rehypeRawHtml);
+  useProcessorPlugin(processor, rehypeDetailsMarkdown);
+  useProcessorPlugin(processor, rehypeProtectDetailsMath);
   useProcessorPlugin(processor, rehypeRestoreMathBoundary);
   processor.use(createPreviewImageSrcPlugin(sourceFilePath));
   useProcessorPlugin(processor, rehypeAbout);
   useProcessorPlugin(processor, rehypeSanitizeSchema);
+  useProcessorPlugin(processor, rehypeNumberEquations);
   useProcessorPlugin(processor, rehypeRenderKatex);
 
   return processor

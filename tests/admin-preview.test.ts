@@ -171,17 +171,120 @@ describe('admin preview api', () => {
     expect(result.html).not.toContain('shiki');
   });
 
-  it('keeps single-dollar and ordinary dollar text outside math rendering', async () => {
+  it('renders generated LaTeX with nested inline delimiters inside display math', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+    const formula = String.raw`\boldsymbol h^{(m)} \triangleq \boldsymbol \(\boldsymbol Z\) \boldsymbol \(\boldsymbol u\)^{(m)}`;
+
+    const result = await renderAdminMarkdownPreview({
+      collection: 'essay',
+      source: ['$$', formula, '$$'].join('\n')
+    });
+
+    expect(result.html).toContain('class="katex-display"');
+    expect(result.html).not.toContain('katex-error');
+  });
+
+  it('numbers equation environments across independent display blocks', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+    const equation = (value: string) => ['$$', '\\begin{equation}', value, '\\end{equation}', '$$'].join('\n');
+    const source = [
+      equation('a = 1'),
+      equation('b = 2'),
+      equation(String.raw`c = 3 \tag{A}`),
+      equation('d = 4')
+    ].join('\n\n');
+
+    const result = await renderAdminMarkdownPreview({ collection: 'essay', source });
+
+    expect(result.html).toContain('a = 1\n\\tag{1}');
+    expect(result.html).toContain('b = 2\n\\tag{2}');
+    expect(result.html).toContain('c = 3 \\tag{A}');
+    expect(result.html).toContain('d = 4\n\\tag{4}');
+  });
+
+  it('renders math directly under details without requiring blank lines', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+    const source = [
+      '<details>',
+      '<summary>公式</summary>',
+      '$x + y$',
+      '$$',
+      String.raw`\boldsymbol z = x + y`,
+      '$$',
+      '</details>'
+    ].join('\n');
+
+    const result = await renderAdminMarkdownPreview({ collection: 'essay', source });
+
+    expect(result.html).toContain('<details>');
+    expect(result.html).toContain('<summary>公式</summary>');
+    expect(result.html).toContain('class="katex"');
+    expect(result.html).toContain('class="katex-display"');
+    expect(result.html).not.toContain('katex-error');
+  });
+
+  it('renders inline math inside a details summary', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+    const source = [
+      '<details>',
+      '<summary>向量 $\\boldsymbol h^{(m)}$ 的说明</summary>',
+      '正文',
+      '</details>'
+    ].join('\n');
+
+    const result = await renderAdminMarkdownPreview({ collection: 'essay', source });
+
+    expect(result.html).toContain('<summary>向量 <span class="katex">');
+    expect(result.html).toContain('的说明</summary>');
+    expect(result.html).not.toContain('<summary><p>');
+    expect(result.html).not.toContain('katex-error');
+  });
+
+  it('preserves inline html spacing and structure inside details', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+    const source = [
+      '<details>',
+      '<summary>before $x$ <em>middle</em> after</summary>',
+      'plain <span>body</span> text',
+      '</details>'
+    ].join('\n');
+
+    const result = await renderAdminMarkdownPreview({ collection: 'essay', source });
+
+    expect(result.html).toContain('<summary>before <span class="katex">');
+    expect(result.html).toContain('</span> <em>middle</em> after</summary>');
+    expect(result.html).toContain('plain <span>body</span> text');
+    expect(result.html).not.toContain('<span><p>');
+  });
+
+  it('renders single-dollar math and keeps escaped currency markers as text', async () => {
     const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
 
     const result = await renderAdminMarkdownPreview({
       collection: 'essay',
-      source: 'The price is $12 and inline single-dollar $x$ stays plain text.'
+      source: 'The price is \\$12 and inline single-dollar $x$ renders as math.'
     });
 
-    expect(result.html).not.toContain('class="katex"');
+    expect(result.html).toContain('class="katex"');
     expect(result.html).toContain('$12');
-    expect(result.html).toContain('$x$');
+    expect(result.html).not.toContain('class="katex-display"');
+  });
+
+  it('renders strong text adjacent to CJK text when it ends in punctuation', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+    const source = [
+      '工程上使用**数值求积（正交积分）**做离散近似。',
+      '',
+      '普通 ** not bold ** 文本保持原样。',
+      '',
+      '转义的 \\*\\*文字（说明）\\*\\* 保持原样。'
+    ].join('\n');
+
+    const result = await renderAdminMarkdownPreview({ collection: 'essay', source });
+
+    expect(result.html).toContain('使用<strong>数值求积（正交积分）</strong>做');
+    expect(result.html).toContain('普通 ** not bold ** 文本');
+    expect(result.html).toContain('**文字（说明）**');
   });
 
   it('renders GFM syntax shown by the editor syntax examples', async () => {

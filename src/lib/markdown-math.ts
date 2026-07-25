@@ -130,8 +130,8 @@ const findClosingBacktickRun = (source: string, startIndex: number, length: numb
   return -1;
 };
 
-const findClosingMathDelimiter = (source: string, startIndex: number): number => {
-  for (let index = startIndex; index < source.length - 1; index += 1) {
+const findClosingMathDelimiter = (source: string, startIndex: number, delimiterLength: 1 | 2): number => {
+  for (let index = startIndex; index < source.length; index += 1) {
     const char = source[index];
 
     if (char === '`' && !isEscaped(source, index)) {
@@ -145,20 +145,24 @@ const findClosingMathDelimiter = (source: string, startIndex: number): number =>
       continue;
     }
 
-    if (char === '$' && source[index + 1] === '$' && !isEscaped(source, index)) {
+    if (char !== '$' || isEscaped(source, index)) continue;
+
+    const runLength = countRepeated(source, index, '$');
+    if (runLength === delimiterLength) {
       return index;
     }
+    index += Math.max(0, runLength - 1);
   }
 
   return -1;
 };
 
 export const containsMarkdownMath = (source: string): boolean => {
-  if (!source.includes('$$')) return false;
+  if (!source.includes('$')) return false;
 
   const searchableSource = stripMarkdownCode(source);
 
-  for (let index = 0; index < searchableSource.length - 1; index += 1) {
+  for (let index = 0; index < searchableSource.length; index += 1) {
     const char = searchableSource[index];
 
     if (char === '`' && !isEscaped(searchableSource, index)) {
@@ -172,20 +176,22 @@ export const containsMarkdownMath = (source: string): boolean => {
       continue;
     }
 
-    if (char !== '$' || searchableSource[index + 1] !== '$' || isEscaped(searchableSource, index)) {
+    if (char !== '$' || isEscaped(searchableSource, index)) {
       continue;
     }
 
-    const closingIndex = findClosingMathDelimiter(searchableSource, index + 2);
+    const runLength = countRepeated(searchableSource, index, '$');
+    const delimiterLength = Math.min(runLength, 2) as 1 | 2;
+    const closingIndex = findClosingMathDelimiter(searchableSource, index + delimiterLength, delimiterLength);
     if (closingIndex < 0) {
-      index += 1;
+      index += runLength - 1;
       continue;
     }
 
-    const content = searchableSource.slice(index + 2, closingIndex);
+    const content = searchableSource.slice(index + delimiterLength, closingIndex);
     if (content.trim().length > 0) return true;
 
-    index = closingIndex + 1;
+    index = closingIndex + delimiterLength - 1;
   }
 
   return false;

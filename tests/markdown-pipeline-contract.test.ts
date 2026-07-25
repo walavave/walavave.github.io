@@ -6,6 +6,8 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkSmartypants from 'remark-smartypants';
 import { rehypeAboutDirectives, remarkAboutDirectives } from '../src/plugins/about-directives.mjs';
+import { rehypeDetailsMarkdown } from '../src/plugins/rehype-details-markdown.mjs';
+import { remarkCjkStrong } from '../src/plugins/remark-cjk-strong.mjs';
 import {
   createMarkdownShikiConfig,
   createProjectMarkdownRehypePlugins,
@@ -23,6 +25,8 @@ import {
 } from '../src/plugins/markdown-pipeline.mjs';
 import {
   markdownMathRawOptions,
+  rehypeNumberDisplayEquations,
+  rehypeProtectDetailsMarkdownMath,
   rehypeProtectMarkdownMath,
   rehypeRestoreMarkdownMathBoundary
 } from '../src/plugins/rehype-markdown-math-boundary.mjs';
@@ -40,6 +44,7 @@ describe('markdown pipeline contract', () => {
     expect(markdownFeatureContract.map((feature) => feature.id)).toEqual([
       'callout',
       'math',
+      'cjk-strong',
       'about-directives',
       'code-block',
       'gfm',
@@ -48,8 +53,21 @@ describe('markdown pipeline contract', () => {
     ]);
 
     expect(markdownFeatureContract.find((feature) => feature.id === 'math')?.options).toEqual({
-      singleDollarTextMath: false
+      singleDollarTextMath: true
     });
+    expect(markdownFeatureContract.find((feature) => feature.id === 'math')?.projectPlugins).toEqual([
+      'remark-math',
+      'rehypeProtectMarkdownMath',
+      'rehype-raw',
+      'rehype-details-markdown',
+      'rehypeProtectDetailsMarkdownMath',
+      'rehypeRestoreMarkdownMathBoundary',
+      'rehypeNumberDisplayEquations',
+      'rehype-katex'
+    ]);
+    expect(markdownFeatureContract.find((feature) => feature.id === 'cjk-strong')?.projectPlugins).toEqual([
+      'remark-cjk-strong'
+    ]);
     expect(markdownFeatureContract.find((feature) => feature.id === 'code-block')?.shikiThemes).toEqual({
       light: 'github-light',
       dark: 'github-dark'
@@ -73,14 +91,14 @@ describe('markdown pipeline contract', () => {
       },
       {
         id: 'project-remark',
-        plugins: ['remark-math', 'remark-directive', 'remark-about-directives', 'remark-callout']
+        plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout']
       }
     ]);
     expect(publicRemarkPlugins).not.toContain(remarkGfm);
     expect(publicRemarkPlugins).not.toContain(remarkSmartypants);
     expect(pluginOf(publicConfig.remarkPlugins[0])).toBe(remarkMath);
     expect(optionsOf(publicConfig.remarkPlugins[0])).toBe(markdownMathOptions);
-    expect(optionsOf(publicConfig.rehypePlugins[3])).toEqual({ base: '/blog/' });
+    expect(optionsOf(publicConfig.rehypePlugins[5])).toEqual({ base: '/blog/' });
   });
 
   it('documents Astro public rehype order without pretending Shiki is a project rehype plugin', () => {
@@ -93,9 +111,12 @@ describe('markdown pipeline contract', () => {
       plugins: [
         'rehypeProtectMarkdownMath',
         'rehype-raw',
+        'rehype-details-markdown',
+        'rehypeProtectDetailsMarkdownMath',
         'rehypeRestoreMarkdownMathBoundary',
         'rehype-about-directives',
         'rehype-sanitize',
+        'rehypeNumberDisplayEquations',
         'rehype-katex'
       ]
     });
@@ -123,18 +144,22 @@ describe('markdown pipeline contract', () => {
 
     expect(pluginOf(remarkPlugins[0])).toBe(remarkMath);
     expect(optionsOf(remarkPlugins[0])).toBe(markdownMathOptions);
-    expect(pluginOf(remarkPlugins[2])).toBe(remarkAboutDirectives);
-    expect(optionsOf(remarkPlugins[2])).toEqual({ enabled: true });
+    expect(pluginOf(remarkPlugins[1])).toBe(remarkCjkStrong);
+    expect(pluginOf(remarkPlugins[3])).toBe(remarkAboutDirectives);
+    expect(optionsOf(remarkPlugins[3])).toEqual({ enabled: true });
 
     expect(pluginOf(rehypePlugins[0])).toBe(rehypeProtectMarkdownMath);
     expect(pluginOf(rehypePlugins[1])).toBe(rehypeRaw);
     expect(optionsOf(rehypePlugins[1])).toBe(markdownMathRawOptions);
-    expect(pluginOf(rehypePlugins[2])).toBe(rehypeRestoreMarkdownMathBoundary);
-    expect(pluginOf(rehypePlugins[3])).toBe(rehypeAboutDirectives);
-    expect(optionsOf(rehypePlugins[3])).toEqual({ base: '/blog/', enabled: true });
-    expect(pluginOf(rehypePlugins[4])).toBe(rehypeSanitize);
-    expect(optionsOf(rehypePlugins[4])).toBe(sanitizeSchema);
-    expect(pluginOf(rehypePlugins[5])).toBe(rehypeKatex);
+    expect(pluginOf(rehypePlugins[2])).toBe(rehypeDetailsMarkdown);
+    expect(pluginOf(rehypePlugins[3])).toBe(rehypeProtectDetailsMarkdownMath);
+    expect(pluginOf(rehypePlugins[4])).toBe(rehypeRestoreMarkdownMathBoundary);
+    expect(pluginOf(rehypePlugins[5])).toBe(rehypeAboutDirectives);
+    expect(optionsOf(rehypePlugins[5])).toEqual({ base: '/blog/', enabled: true });
+    expect(pluginOf(rehypePlugins[6])).toBe(rehypeSanitize);
+    expect(optionsOf(rehypePlugins[6])).toBe(sanitizeSchema);
+    expect(pluginOf(rehypePlugins[7])).toBe(rehypeNumberDisplayEquations);
+    expect(pluginOf(rehypePlugins[8])).toBe(rehypeKatex);
   });
 
   it('keeps Shiki themes and toolbar transformer in one public factory', () => {
@@ -152,7 +177,8 @@ describe('markdown pipeline contract', () => {
     expect(previewSegmentIndex('raw-html')).toBeLessThan(previewSegmentIndex('sanitize'));
     expect(previewSegmentIndex('preview-local-image-src')).toBeLessThan(previewSegmentIndex('sanitize'));
     expect(previewSegmentIndex('about-directives')).toBeLessThan(previewSegmentIndex('sanitize'));
-    expect(previewSegmentIndex('sanitize')).toBeLessThan(previewSegmentIndex('katex'));
+    expect(previewSegmentIndex('sanitize')).toBeLessThan(previewSegmentIndex('equation-numbering'));
+    expect(previewSegmentIndex('equation-numbering')).toBeLessThan(previewSegmentIndex('katex'));
     expect(previewSegmentIndex('katex')).toBeLessThan(previewSegmentIndex('preview-stringify'));
   });
 

@@ -52,13 +52,13 @@ describe('admin editor markdown transforms', () => {
     });
 
     expectMarkdownEdit('Equation: ', applyMarkdownToolToText('Equation: ', { from: 10, to: 10 }, 'inlineMath'), {
-      value: 'Equation: $$x$$',
-      selection: { from: 12, to: 13 }
+      value: 'Equation: $x$',
+      selection: { from: 11, to: 12 }
     });
 
     expectMarkdownEdit('E = mc^2', applyMarkdownToolToText('E = mc^2', { from: 0, to: 8 }, 'inlineMath'), {
-      value: '$$E = mc^2$$',
-      selection: { from: 2, to: 10 }
+      value: '$E = mc^2$',
+      selection: { from: 1, to: 9 }
     });
   });
 

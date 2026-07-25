@@ -317,7 +317,7 @@ author:
 - Callout：推荐语法糖 `:::note[title] ... :::`（note / tip / info / warning）；HTML 方式使用 `.callout-title`，隐藏图标用 `data-icon="none"`
 - Figure：`figure.figure > (img|picture) + figcaption.figure-caption?`，可选 `figure--sm/md/lg/full` 与 `figure--left/center/right`
 - Gallery：`ul.gallery > li > figure > (img|picture) + figcaption?`，可选 `cols-2` / `cols-3`
-- Math：支持双美元公式，行内写 `$$x$$`，块级写 `$$ ... $$`；单美元 `$x$` 不作为公式解析
+- Math：支持双美元公式，行内写 `$$x$$`、`$x$`，块级写 `$$ ... $$`
 - Quote：标准 `blockquote`，可选 `cite` 标注来源
 - Pullquote：`blockquote.pullquote`
 - Code Block：构建时增强工具栏/复制按钮/行号（作者无需额外写法）

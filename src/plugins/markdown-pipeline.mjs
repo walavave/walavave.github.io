@@ -6,16 +6,20 @@ import rehypeSanitize from 'rehype-sanitize';
 import { visit } from 'unist-util-visit';
 import {
   markdownMathRawOptions,
+  rehypeNumberDisplayEquations,
+  rehypeProtectDetailsMarkdownMath,
   rehypeProtectMarkdownMath,
   rehypeRestoreMarkdownMathBoundary
 } from './rehype-markdown-math-boundary.mjs';
 import { rehypeAboutDirectives, remarkAboutDirectives } from './about-directives.mjs';
+import { rehypeDetailsMarkdown } from './rehype-details-markdown.mjs';
 import remarkCallout from './remark-callout.mjs';
+import { remarkCjkStrong } from './remark-cjk-strong.mjs';
 import { sanitizeSchema } from './sanitize-schema.mjs';
 import shikiToolbar from './shiki-toolbar.mjs';
 
 export const markdownMathOptions = Object.freeze({
-  singleDollarTextMath: false
+  singleDollarTextMath: true
 });
 
 export const markdownSmartypantsOptions = Object.freeze({});
@@ -53,9 +57,18 @@ export const markdownFeatureContract = Object.freeze([
     projectPlugins: [
       'remark-math',
       'rehypeProtectMarkdownMath',
+      'rehype-raw',
+      'rehype-details-markdown',
+      'rehypeProtectDetailsMarkdownMath',
       'rehypeRestoreMarkdownMathBoundary',
+      'rehypeNumberDisplayEquations',
       'rehype-katex'
     ]
+  },
+  {
+    id: 'cjk-strong',
+    syntax: 'strong',
+    projectPlugins: ['remark-cjk-strong']
   },
   {
     id: 'about-directives',
@@ -113,7 +126,7 @@ export const publicMarkdownRemarkSegments = Object.freeze([
   },
   {
     id: 'project-remark',
-    plugins: ['remark-math', 'remark-directive', 'remark-about-directives', 'remark-callout']
+    plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout']
   }
 ]);
 
@@ -129,7 +142,7 @@ export const previewMarkdownRemarkSegments = Object.freeze([
   },
   {
     id: 'project-remark',
-    plugins: ['remark-math', 'remark-directive', 'remark-about-directives', 'remark-callout']
+    plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout']
   }
 ]);
 
@@ -151,9 +164,12 @@ export const publicMarkdownRehypeSegments = Object.freeze([
     plugins: [
       'rehypeProtectMarkdownMath',
       'rehype-raw',
+      'rehype-details-markdown',
+      'rehypeProtectDetailsMarkdownMath',
       'rehypeRestoreMarkdownMathBoundary',
       'rehype-about-directives',
       'rehype-sanitize',
+      'rehypeNumberDisplayEquations',
       'rehype-katex'
     ]
   },
@@ -202,7 +218,12 @@ export const previewMarkdownRehypeSegments = Object.freeze([
   },
   {
     id: 'raw-html',
-    plugins: ['rehype-raw', 'rehypeRestoreMarkdownMathBoundary'],
+    plugins: [
+      'rehype-raw',
+      'rehype-details-markdown',
+      'rehypeProtectDetailsMarkdownMath',
+      'rehypeRestoreMarkdownMathBoundary'
+    ],
     after: 'code-highlighting',
     before: 'sanitize'
   },
@@ -224,9 +245,15 @@ export const previewMarkdownRehypeSegments = Object.freeze([
     strategy: 'shared-schema'
   },
   {
+    id: 'equation-numbering',
+    plugins: ['rehypeNumberDisplayEquations'],
+    after: 'sanitize',
+    before: 'katex'
+  },
+  {
     id: 'katex',
     plugins: ['rehype-katex'],
-    after: 'sanitize'
+    after: 'equation-numbering'
   },
   {
     id: 'preview-stringify',
@@ -274,6 +301,7 @@ export const createMarkdownShikiConfig = () => ({
 /** @param {ProjectMarkdownRemarkOptions} [options] */
 export const createProjectMarkdownRemarkPlugins = ({ aboutEnabled } = {}) => [
   [remarkMath, markdownMathOptions],
+  remarkCjkStrong,
   remarkDirective,
   withOptions(remarkAboutDirectives, aboutEnabled === undefined ? undefined : { enabled: aboutEnabled }),
   remarkCallout,
@@ -284,12 +312,15 @@ export const createProjectMarkdownRemarkPlugins = ({ aboutEnabled } = {}) => [
 export const createProjectMarkdownRehypePlugins = ({ aboutBase = '/', aboutEnabled } = {}) => [
   rehypeProtectMarkdownMath,
   [rehypeRaw, markdownMathRawOptions],
+  rehypeDetailsMarkdown,
+  rehypeProtectDetailsMarkdownMath,
   rehypeRestoreMarkdownMathBoundary,
   [rehypeAboutDirectives, {
     base: aboutBase,
     ...(aboutEnabled === undefined ? {} : { enabled: aboutEnabled })
   }],
   [rehypeSanitize, sanitizeSchema],
+  rehypeNumberDisplayEquations,
   rehypeKatex
 ];
 

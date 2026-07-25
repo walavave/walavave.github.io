@@ -19,7 +19,7 @@ const renderMarkdown = async (source: string): Promise<string> =>
   String(
     await unified()
       .use(remarkParse)
-      .use(remarkMath, { singleDollarTextMath: false })
+      .use(remarkMath, { singleDollarTextMath: true })
       .use(remarkRehype, { allowDangerousHtml: true })
       .use(rehypeProtectMarkdownMath)
       .use(rehypeRaw, markdownMathRawOptions)
@@ -38,6 +38,26 @@ describe('rehype markdown math boundary', () => {
     expect(html).toContain('class="katex-display"');
     expect(html).not.toContain('math-inline');
     expect(html).not.toContain('math-display');
+  });
+
+  it('renders single-dollar inline math through KaTeX', async () => {
+    const html = await renderMarkdown('Inline $x + y$ math.');
+
+    expect(html).toContain('class="katex"');
+    expect(html).not.toContain('class="katex-display"');
+  });
+
+  it('renders nested inline delimiters as groups inside a math block', async () => {
+    const source = [
+      '$$',
+      String.raw`\boldsymbol h^{(m)} \triangleq \boldsymbol \(\boldsymbol Z\) \boldsymbol \(\boldsymbol u\)^{(m)}`,
+      '$$'
+    ].join('\n');
+    const html = await renderMarkdown(source);
+
+    expect(html).toContain('class="katex-display"');
+    expect(html).not.toContain('katex-error');
+    expect(html).not.toContain('\\(');
   });
 
   it('does not let raw HTML math classes trigger KaTeX', async () => {

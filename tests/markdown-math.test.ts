@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { containsMarkdownMath } from '../src/lib/markdown-math';
 
 describe('containsMarkdownMath', () => {
-  it('ignores content without double-dollar math', () => {
+  it('ignores content without math', () => {
     expect(containsMarkdownMath('')).toBe(false);
     expect(containsMarkdownMath('Plain markdown without math.')).toBe(false);
-    expect(containsMarkdownMath('Inline single dollar $x$ is disabled.')).toBe(false);
-    expect(containsMarkdownMath('The price is $12 and the variable is $name.')).toBe(false);
+    expect(containsMarkdownMath('An unmatched price marker $12 is plain text.')).toBe(false);
+    expect(containsMarkdownMath('Escaped inline delimiters \\$x\\$ are plain text.')).toBe(false);
     expect(containsMarkdownMath('This text mentions $$ as plain delimiters.')).toBe(false);
     expect(containsMarkdownMath('Empty delimiters are not math: $$ $$.')).toBe(false);
     expect(containsMarkdownMath('<span class="math-inline">x + y</span>')).toBe(false);
@@ -40,6 +40,10 @@ describe('containsMarkdownMath', () => {
 
   it('detects inline double-dollar math', () => {
     expect(containsMarkdownMath('Euler identity: $$e^{i\\pi} + 1 = 0$$.')).toBe(true);
+  });
+
+  it('detects inline single-dollar math', () => {
+    expect(containsMarkdownMath('Euler identity: $e^{i\\pi} + 1 = 0$.')).toBe(true);
   });
 
   it('detects single-line block double-dollar math', () => {

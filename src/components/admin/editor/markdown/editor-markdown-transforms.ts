@@ -297,7 +297,7 @@ export const applyMarkdownToolToText = (
     case 'codeBlock':
       return wrapBlockSelection(value, selection, '```text\n', '\n```', 'code');
     case 'inlineMath':
-      return wrapSelection(value, selection, '$$', '$$', 'x');
+      return wrapSelection(value, selection, '$', '$', 'x');
     case 'blockMath':
       return wrapBlockSelection(value, selection, '$$\n', '\n$$', 'x');
     case 'details':

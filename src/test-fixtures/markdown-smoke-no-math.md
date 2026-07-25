@@ -4,11 +4,11 @@ title: Markdown Smoke Fixture Without Math
 
 # Markdown Smoke Fixture Without Math
 
-This fixture intentionally has no double-dollar formula markers.
+This fixture intentionally has no formula markers.
 
 ## Plain Dollar Text
 
-The price is $12, and the single-dollar example $x$ stays ordinary text.
+The escaped price is \$12, and the escaped example \$x\$ stays ordinary text.
 
 ## Code Block
 
