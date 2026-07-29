@@ -5,8 +5,10 @@ import {
   fillAdminThemeSettingsCompatibilityDefaults,
   getAdminNavOrderIssues,
   getAdminSocialOrderIssues,
+  normalizeAdminSocialIconKey,
   validateAdminThemeSettings
 } from '../src/lib/admin-console/shared';
+import { BRAND_SVG_ICON_BODIES } from '../src/lib/brand-icon-bodies';
 import {
   getAdminImageFieldPreviewSrc,
   getAdminRenderedImagePreviewSrc
@@ -22,18 +24,50 @@ import {
 } from '../src/utils/format';
 
 describe('admin-console/shared', () => {
+  it('supports Zhihu, WeChat, and Xiaohongshu social icons', () => {
+    const iconKeys = ['zhihu', 'wechat', 'xiaohongshu'] as const;
+
+    for (const iconKey of iconKeys) {
+      expect(normalizeAdminSocialIconKey(iconKey)).toBe(iconKey);
+      expect(BRAND_SVG_ICON_BODIES[iconKey]).toContain('<path');
+    }
+  });
+
+  it('validates the WeChat public-account QR image path', () => {
+    const settings = structuredClone(getEditableThemeSettingsPayload().settings);
+    settings.site.socialLinks.custom = [{
+      id: 'custom-wechat',
+      label: '微信公众号',
+      href: 'author/qrcode.jpg',
+      iconKey: 'wechat',
+      visible: true,
+      order: 4
+    }];
+    expect(validateAdminThemeSettings(settings)).toEqual([]);
+
+    settings.site.socialLinks.custom[0]!.href = '../qrcode.jpg';
+    expect(validateAdminThemeSettings(settings).map((issue) => issue.path)).toContain(
+      'site.socialLinks.custom[0].href'
+    );
+  });
+
   it('reports duplicate and range issues for social orders', () => {
     expect(
       getAdminSocialOrderIssues(
-        { github: 1, x: 1, email: 99 },
-        [{ key: 'custom-1', order: 2 }, { key: 'custom-2', order: 2 }]
+        [
+          { key: 'github', order: 1 },
+          { key: 'x', order: 1 },
+          { key: 'email', order: 99 },
+          { key: 'custom-1', order: 2 },
+          { key: 'custom-2', order: 2 }
+        ]
       )
     ).toEqual([
-      { type: 'duplicate', scope: 'preset', key: 'github', order: 1 },
-      { type: 'duplicate', scope: 'preset', key: 'x', order: 1 },
-      { type: 'range', scope: 'preset', key: 'email', order: 99 },
-      { type: 'duplicate', scope: 'custom', key: 'custom-1', order: 2 },
-      { type: 'duplicate', scope: 'custom', key: 'custom-2', order: 2 }
+      { type: 'duplicate', key: 'github', order: 1 },
+      { type: 'duplicate', key: 'x', order: 1 },
+      { type: 'range', key: 'email', order: 99 },
+      { type: 'duplicate', key: 'custom-1', order: 2 },
+      { type: 'duplicate', key: 'custom-2', order: 2 }
     ]);
   });
 
@@ -123,7 +157,6 @@ describe('admin-console/shared', () => {
     const raw = structuredClone(getEditableThemeSettingsPayload().settings) as Record<string, any>;
     raw.site.title = `  ${raw.site.title}  `;
     raw.site.footer.startYear = String(raw.site.footer.startYear);
-    raw.site.socialLinks.email = `mailto:${raw.site.socialLinks.email}`;
     raw.site.socialLinks.custom = [
       {
         id: 'custom-home',
@@ -143,7 +176,6 @@ describe('admin-console/shared', () => {
 
     expect(canonical.site.title).toBe(getEditableThemeSettingsPayload().settings.site.title);
     expect(canonical.site.footer.startYear).toBe(getEditableThemeSettingsPayload().settings.site.footer.startYear);
-    expect(canonical.site.socialLinks.email).toBe(getEditableThemeSettingsPayload().settings.site.socialLinks.email);
     expect(canonical.site.socialLinks.custom[0]).toMatchObject({
       iconKey: 'website',
       label: 'website',
@@ -157,7 +189,6 @@ describe('admin-console/shared', () => {
       expect.arrayContaining([
         'site.title',
         'site.footer.startYear',
-        'site.socialLinks.email',
         'site.socialLinks.custom[0].iconKey',
         'site.socialLinks.custom[0].label',
         'site.socialLinks.custom[0].visible',

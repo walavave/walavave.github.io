@@ -12,14 +12,55 @@
     "hiddenMessage": "作者暂未公开此页面。"
   },
   "socialLinks": {
-    "github": "https://github.com/walavave",
-    "x": "https://x.com/walavave",
-    "email": "walavave@gmail.com",
-    "presetOrder": {
-      "github": 1,
-      "x": 2,
-      "email": 3
-    },
-    "custom": []
+    "custom": [
+      {
+        "id": "github",
+        "label": "GitHub",
+        "href": "https://github.com/walavave",
+        "iconKey": "github",
+        "visible": true,
+        "order": 1
+      },
+      {
+        "id": "email",
+        "label": "Email",
+        "href": "mailto:walavave@gmail.com",
+        "iconKey": "email",
+        "visible": true,
+        "order": 2
+      },
+      {
+        "id": "custom-zhihu",
+        "label": "知乎",
+        "href": "https://zhihu.com/people/walavave",
+        "iconKey": "zhihu",
+        "visible": true,
+        "order": 3
+      },
+      {
+        "id": "custom-wechat",
+        "label": "微信公众号",
+        "href": "author/qrcode.jpg",
+        "iconKey": "wechat",
+        "visible": true,
+        "order": 4
+      },
+      {
+        "id": "custom-xiaohongshu",
+        "label": "小红书",
+        "href": "https://xhslink.cn/m/5Gw8j7gZ3Sz",
+        "iconKey": "xiaohongshu",
+        "visible": true,
+        "order": 5
+      },
+      {
+        "id": "x",
+        "label": "X",
+        "href": "https://x.com/walavave",
+        "iconKey": "x",
+        "visible": true,
+        "order": 6
+      }
+    ]
   }
 }

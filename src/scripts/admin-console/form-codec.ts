@@ -3,7 +3,6 @@ import type {
   SidebarDividerVariant,
   SidebarNavId,
   SiteSocialIconKey,
-  SiteSocialPresetId,
   ThemeFontId,
   ThemeSettingsEditablePayload,
   TypographyRole,
@@ -20,7 +19,6 @@ import {
   ADMIN_NAV_ORNAMENT_DEFAULT,
   ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT,
   ADMIN_SIDEBAR_DIVIDER_DEFAULT,
-  ADMIN_SOCIAL_PRESET_ORDER_DEFAULT,
   ADMIN_TYPOGRAPHY_DEFAULT,
   canonicalizeAdminThemeSettings,
   isAdminHomeIntroLinkKey,
@@ -32,7 +30,6 @@ import {
 export type EditableSettings = ThemeSettingsEditablePayload['settings'];
 export type EditableCustomSocialItem = EditableSettings['site']['socialLinks']['custom'][number];
 export type EditableNavItem = EditableSettings['shell']['nav'][number];
-export type SocialPresetOrder = Record<SiteSocialPresetId, number>;
 
 type Query = <T extends Element>(parent: ParentNode, selector: string) => T | null;
 
@@ -46,7 +43,6 @@ type FormCodecContext = {
   normalizeCustomSocialLabel: (value: unknown, iconKey: SiteSocialIconKey) => string;
   replaceCustomRows: (items: EditableCustomSocialItem[]) => void;
   normalizeSocialOrders: () => void;
-  getPresetSocialOrder: () => SocialPresetOrder;
   articleMetaPreviewValueEl: HTMLElement;
   footerPreviewValueEl: HTMLElement;
   homeIntroMorePreviewEl: HTMLElement;
@@ -59,12 +55,6 @@ type FormCodecContext = {
   inputSiteFooterCopyright: HTMLInputElement;
   inputSiteAdminOverviewPublicVisible: HTMLInputElement;
   inputSiteAdminOverviewHiddenMessage: HTMLInputElement;
-  inputSiteSocialGithubOrder: HTMLInputElement;
-  inputSiteSocialGithub: HTMLInputElement;
-  inputSiteSocialXOrder: HTMLInputElement;
-  inputSiteSocialX: HTMLInputElement;
-  inputSiteSocialEmailOrder: HTMLInputElement;
-  inputSiteSocialEmail: HTMLInputElement;
   inputShellBrandTitle: HTMLInputElement;
   inputShellQuote: HTMLTextAreaElement;
   inputHomeShowIntroLead: HTMLInputElement;
@@ -123,8 +113,6 @@ const normalizeSingleLine = (value: unknown, fallback = ''): string => {
   return normalized.includes('\n') ? fallback : normalized;
 };
 
-export const normalizeEmail = (value: string): string => value.replace(/^mailto:/i, '').trim();
-
 const parseOrder = (value: string | number | null | undefined, fallback: number): number => {
   const next = Number.parseInt(String(value ?? '').trim(), 10);
   return Number.isFinite(next) ? next : fallback;
@@ -158,7 +146,6 @@ export const createFormCodec = ({
   normalizeCustomSocialLabel,
   replaceCustomRows,
   normalizeSocialOrders,
-  getPresetSocialOrder,
   articleMetaPreviewValueEl,
   footerPreviewValueEl,
   homeIntroMorePreviewEl,
@@ -171,12 +158,6 @@ export const createFormCodec = ({
   inputSiteFooterCopyright,
   inputSiteAdminOverviewPublicVisible,
   inputSiteAdminOverviewHiddenMessage,
-  inputSiteSocialGithubOrder,
-  inputSiteSocialGithub,
-  inputSiteSocialXOrder,
-  inputSiteSocialX,
-  inputSiteSocialEmailOrder,
-  inputSiteSocialEmail,
   inputShellBrandTitle,
   inputShellQuote,
   inputHomeShowIntroLead,
@@ -481,10 +462,6 @@ export const createFormCodec = ({
           )
         },
         socialLinks: {
-          github: inputSiteSocialGithub.value.trim() || null,
-          x: inputSiteSocialX.value.trim() || null,
-          email: normalizeEmail(inputSiteSocialEmail.value.trim()) || null,
-          presetOrder: getPresetSocialOrder(),
           custom
         }
       },
@@ -573,18 +550,6 @@ export const createFormCodec = ({
     inputSiteAdminOverviewHiddenMessage.value =
       settings.site.adminOverview?.hiddenMessage || ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT;
     syncAdminOverviewControls();
-    inputSiteSocialGithubOrder.value = String(
-      settings.site.socialLinks?.presetOrder?.github ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.github
-    );
-    inputSiteSocialGithub.value = settings.site.socialLinks?.github || '';
-    inputSiteSocialXOrder.value = String(
-      settings.site.socialLinks?.presetOrder?.x ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.x
-    );
-    inputSiteSocialX.value = settings.site.socialLinks?.x || '';
-    inputSiteSocialEmailOrder.value = String(
-      settings.site.socialLinks?.presetOrder?.email ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.email
-    );
-    inputSiteSocialEmail.value = settings.site.socialLinks?.email || '';
     replaceCustomRows(settings.site.socialLinks?.custom || []);
     normalizeSocialOrders();
     inputShellBrandTitle.value = settings.shell.brandTitle || '';

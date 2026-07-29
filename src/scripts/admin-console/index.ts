@@ -44,10 +44,7 @@ if (!root) {
       socialCustomHead: controls.socialCustomHead,
       socialCustomCountEl: controls.socialCustomCountEl,
       socialCustomAddBtn: controls.socialCustomAddBtn,
-      socialCustomTemplate: controls.socialCustomTemplate,
-      inputSiteSocialGithubOrder: controls.inputSiteSocialGithubOrder,
-      inputSiteSocialXOrder: controls.inputSiteSocialXOrder,
-      inputSiteSocialEmailOrder: controls.inputSiteSocialEmailOrder
+      socialCustomTemplate: controls.socialCustomTemplate
     });
 
     const formCodec = createFormCodec({
@@ -60,7 +57,6 @@ if (!root) {
       normalizeCustomSocialLabel: socialLinks.normalizeCustomSocialLabel,
       replaceCustomRows: socialLinks.replaceCustomRows,
       normalizeSocialOrders: socialLinks.normalizeSocialOrders,
-      getPresetSocialOrder: socialLinks.getPresetSocialOrder,
       articleMetaPreviewValueEl: controls.articleMetaPreviewValueEl,
       footerPreviewValueEl: controls.footerPreviewValueEl,
       homeIntroMorePreviewEl: controls.homeIntroMorePreviewEl,
@@ -73,12 +69,6 @@ if (!root) {
       inputSiteFooterCopyright: controls.inputSiteFooterCopyright,
       inputSiteAdminOverviewPublicVisible: controls.inputSiteAdminOverviewPublicVisible,
       inputSiteAdminOverviewHiddenMessage: controls.inputSiteAdminOverviewHiddenMessage,
-      inputSiteSocialGithubOrder: controls.inputSiteSocialGithubOrder,
-      inputSiteSocialGithub: controls.inputSiteSocialGithub,
-      inputSiteSocialXOrder: controls.inputSiteSocialXOrder,
-      inputSiteSocialX: controls.inputSiteSocialX,
-      inputSiteSocialEmailOrder: controls.inputSiteSocialEmailOrder,
-      inputSiteSocialEmail: controls.inputSiteSocialEmail,
       inputShellBrandTitle: controls.inputShellBrandTitle,
       inputShellQuote: controls.inputShellQuote,
       inputHomeShowIntroLead: controls.inputHomeShowIntroLead,
@@ -150,9 +140,6 @@ if (!root) {
       inputSiteFooterCopyright: controls.inputSiteFooterCopyright,
       inputSiteAdminOverviewPublicVisible: controls.inputSiteAdminOverviewPublicVisible,
       inputSiteAdminOverviewHiddenMessage: controls.inputSiteAdminOverviewHiddenMessage,
-      inputSiteSocialGithub: controls.inputSiteSocialGithub,
-      inputSiteSocialX: controls.inputSiteSocialX,
-      inputSiteSocialEmail: controls.inputSiteSocialEmail,
       inputShellBrandTitle: controls.inputShellBrandTitle,
       inputShellQuote: controls.inputShellQuote,
       inputHomeIntroLead: controls.inputHomeIntroLead,
@@ -189,7 +176,6 @@ if (!root) {
       inputTypographyCopy: controls.inputTypographyCopy,
       inputTypographyMono: controls.inputTypographyMono,
       inputTypographyBrand: controls.inputTypographyBrand,
-      getPresetFieldTarget: socialLinks.getPresetFieldTarget,
       getCustomFieldTarget: socialLinks.getCustomFieldTarget,
       getCustomVisibilityTarget: socialLinks.getCustomVisibilityTarget,
       getNavFieldTarget,
@@ -229,11 +215,6 @@ if (!root) {
     });
 
     const finalizeAppliedSettings = (): void => {
-      socialLinks.getPresetRows().forEach((row) => {
-        delete row.dataset.stashedHref;
-        delete row.dataset.stashedOrder;
-        socialLinks.syncPresetRow(row);
-      });
       themeImageFields?.refreshAll();
     };
 

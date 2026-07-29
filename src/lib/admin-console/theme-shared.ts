@@ -6,8 +6,6 @@ import type {
   SidebarDividerVariant,
   SidebarNavId,
   SiteSocialIconKey,
-  SiteSocialPresetId,
-  SiteSocialPresetOrder,
   ThemeSettingsFileGroup,
   TypographySettings
 } from '../theme-settings';
@@ -23,6 +21,7 @@ import {
   normalizeBitsAvatarPath as normalizeAdminBitsAvatarPath,
   normalizeHeroImageSrc as normalizeAdminHeroImageSrc
 } from '../../utils/format';
+import { normalizeContentImageSource } from '../../utils/image-source';
 
 export {
   getAdminBitsAvatarLocalFilePath,
@@ -33,7 +32,7 @@ export {
 
 export const ADMIN_NAV_IDS = ['essay', 'bits', 'memo', 'archive', 'about'] as const satisfies readonly SidebarNavId[];
 export const ADMIN_PAGE_IDS = ['essay', 'archive', 'bits', 'memo', 'about'] as const satisfies readonly PageId[];
-export const ADMIN_SOCIAL_CUSTOM_LIMIT = 8;
+export const ADMIN_SOCIAL_CUSTOM_LIMIT = 11;
 
 export const ADMIN_HERO_PRESETS = ['default', 'none'] as const satisfies readonly HeroPresetId[];
 export const ADMIN_HERO_PRESET_SET: ReadonlySet<HeroPresetId> = new Set(ADMIN_HERO_PRESETS);
@@ -87,18 +86,11 @@ export const ADMIN_HOME_INTRO_LINK_OPTIONS = [
   href: string;
 }[];
 
-export const ADMIN_SOCIAL_PRESET_IDS = ['github', 'x', 'email'] as const satisfies readonly SiteSocialPresetId[];
-export const ADMIN_SOCIAL_PRESET_ORDER_DEFAULT: Record<SiteSocialPresetId, number> = {
-  github: 1,
-  x: 2,
-  email: 3
-};
 export const ADMIN_SOCIAL_ORDER_MIN = 1;
-export const ADMIN_SOCIAL_ORDER_MAX = ADMIN_SOCIAL_PRESET_IDS.length + ADMIN_SOCIAL_CUSTOM_LIMIT;
+export const ADMIN_SOCIAL_ORDER_MAX = ADMIN_SOCIAL_CUSTOM_LIMIT;
 export const ADMIN_NAV_ORDER_MIN = 1;
 export const ADMIN_NAV_ORDER_MAX = 999;
 
-type AdminSocialOrderScope = 'preset' | 'custom';
 type AdminSocialOrderInput = {
   key: string;
   order: number;
@@ -110,7 +102,6 @@ type AdminNavOrderInput = {
 
 export type AdminSocialOrderIssue = {
   type: 'range' | 'duplicate';
-  scope: AdminSocialOrderScope;
   key: string;
   order: number;
 };
@@ -125,6 +116,9 @@ export const ADMIN_SOCIAL_ICON_KEYS = [
   'x',
   'email',
   'weibo',
+  'zhihu',
+  'wechat',
+  'xiaohongshu',
   'facebook',
   'instagram',
   'telegram',
@@ -135,9 +129,6 @@ export const ADMIN_SOCIAL_ICON_KEYS = [
   'website'
 ] as const satisfies readonly SiteSocialIconKey[];
 export const ADMIN_SOCIAL_ICON_KEY_SET: ReadonlySet<SiteSocialIconKey> = new Set(ADMIN_SOCIAL_ICON_KEYS);
-
-export const ADMIN_GITHUB_HOSTS = ['github.com'] as const;
-export const ADMIN_X_HOSTS = ['x.com', 'twitter.com'] as const;
 
 export const ADMIN_HOME_INTRO_MAX_LENGTH = 240;
 export const ADMIN_PAGE_TITLE_MAX_LENGTH = 60;
@@ -169,9 +160,6 @@ export const isAdminSidebarDividerVariant = (value: string): value is SidebarDiv
 export const isAdminHomeIntroLinkKey = (value: string): value is HomeIntroLinkKey =>
   ADMIN_HOME_INTRO_LINK_KEY_SET.has(value as HomeIntroLinkKey);
 
-export const isAdminSocialPresetId = (value: string): value is SiteSocialPresetId =>
-  (ADMIN_SOCIAL_PRESET_IDS as readonly string[]).includes(value);
-
 export const normalizeAdminSocialIconKey = (value: unknown): SiteSocialIconKey | undefined => {
   if (typeof value !== 'string') return undefined;
   const normalized = value.trim();
@@ -190,21 +178,9 @@ export const isAdminNavOrderValue = (value: number): boolean =>
   Number.isInteger(value) && value >= ADMIN_NAV_ORDER_MIN && value <= ADMIN_NAV_ORDER_MAX;
 
 export const getAdminSocialOrderIssues = (
-  presetOrder: Readonly<SiteSocialPresetOrder>,
   customItems: readonly AdminSocialOrderInput[]
 ): AdminSocialOrderIssue[] => {
-  const entries = [
-    ...ADMIN_SOCIAL_PRESET_IDS.map((id) => ({
-      scope: 'preset' as const,
-      key: id,
-      order: presetOrder[id]
-    })),
-    ...customItems.map((item) => ({
-      scope: 'custom' as const,
-      key: item.key,
-      order: item.order
-    }))
-  ];
+  const entries = customItems.map((item) => ({ key: item.key, order: item.order }));
   const orderCounts = new Map<number, number>();
 
   entries.forEach((entry) => {
@@ -398,7 +374,6 @@ export const canonicalizeAdminThemeSettings = (
   const essayPage = isRecord(page.essay) ? page.essay : {};
   const bitsPage = isRecord(page.bits) ? page.bits : {};
   const bitsDefaultAuthor = isRecord(bitsPage.defaultAuthor) ? bitsPage.defaultAuthor : {};
-  const rawPresetOrder = isRecord(socialLinks.presetOrder) ? socialLinks.presetOrder : {};
   const rawUiArticleMeta: LooseRecord = isRecord(ui.articleMeta) ? ui.articleMeta : {};
   const rawUiSidebarActions: LooseRecord = isRecord(ui.sidebarActions) ? ui.sidebarActions : {};
   const rawUiLayout: LooseRecord = isRecord(ui.layout) ? ui.layout : {};
@@ -415,10 +390,15 @@ export const canonicalizeAdminThemeSettings = (
     .map((item, index) => {
       const record = isRecord(item) ? item : {};
       const iconKey = normalizeAdminSocialIconKey(record.iconKey) ?? defaultCustomSocialIconKey;
+      const href = normalizeTrimmed(record.href);
       const sortableItem: SortableCustomItem = {
         id: normalizeTrimmed(record.id),
         label: normalizeCustomSocialLabel(record.label, iconKey),
-        href: normalizeTrimmed(record.href),
+        href: iconKey === 'wechat'
+          ? normalizeContentImageSource(href) ?? href
+          : iconKey === 'email' && href
+            ? `mailto:${normalizeEmail(href)}`
+            : href,
         iconKey,
         visible: Boolean(record.visible),
         order: parseOrder(record.order as string | number | null | undefined, index + 1),
@@ -490,20 +470,6 @@ export const canonicalizeAdminThemeSettings = (
         )
       },
       socialLinks: {
-        github: normalizeTrimmed(socialLinks.github) || null,
-        x: normalizeTrimmed(socialLinks.x) || null,
-        email: normalizeEmail(normalizeTrimmed(socialLinks.email)) || null,
-        presetOrder: {
-          github: parseOrder(
-            rawPresetOrder.github as string | number | null | undefined,
-            ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.github
-          ),
-          x: parseOrder(rawPresetOrder.x as string | number | null | undefined, ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.x),
-          email: parseOrder(
-            rawPresetOrder.email as string | number | null | undefined,
-            ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.email
-          )
-        },
         custom: normalizedCustom
       }
     },
@@ -607,12 +573,6 @@ export const createAdminWritableThemeSettingsGroups = (
       ...settings.site.adminOverview
     },
     socialLinks: {
-      github: settings.site.socialLinks.github,
-      x: settings.site.socialLinks.x,
-      email: settings.site.socialLinks.email,
-      presetOrder: {
-        ...settings.site.socialLinks.presetOrder
-      },
       custom: cloneCustomItems(settings.site.socialLinks.custom)
     }
   },
@@ -713,68 +673,24 @@ export const validateAdminThemeSettings = (
     );
   }
 
-  if (
-    settings.site.socialLinks?.github &&
-    !isAdminAllowedHttpsUrl(settings.site.socialLinks.github, ADMIN_GITHUB_HOSTS)
-  ) {
-    pushIssue('site.socialLinks.github', 'GitHub 链接只允许 https://github.com/... ');
-  }
-  if (
-    settings.site.socialLinks?.x &&
-    !isAdminAllowedHttpsUrl(settings.site.socialLinks.x, ADMIN_X_HOSTS)
-  ) {
-    pushIssue('site.socialLinks.x', 'X / Twitter 链接只允许 https://x.com/... 或 https://twitter.com/... ');
-  }
-  if (
-    settings.site.socialLinks?.email &&
-    !ADMIN_EMAIL_RE.test(normalizeEmail(settings.site.socialLinks.email))
-  ) {
-    pushIssue('site.socialLinks.email', 'Email 必须是合法邮箱地址');
-  }
-
-  const presetOrder = settings.site.socialLinks.presetOrder;
   const customLinks = Array.isArray(settings.site.socialLinks?.custom) ? settings.site.socialLinks.custom : [];
   const socialOrderIssues = getAdminSocialOrderIssues(
-    presetOrder,
     customLinks.map((item, index) => ({
       key: String(index),
       order: item.order
     }))
   );
-  const presetOrderIssues = new Map<SiteSocialPresetId, 'range' | 'duplicate'>();
   const customOrderIssues = new Map<number, 'range' | 'duplicate'>();
 
   socialOrderIssues.forEach((issue) => {
-    if (issue.scope === 'preset') {
-      if (isAdminSocialPresetId(issue.key)) {
-        presetOrderIssues.set(issue.key, issue.type);
-      }
-      return;
-    }
-
     const index = Number.parseInt(issue.key, 10);
     if (Number.isInteger(index)) {
       customOrderIssues.set(index, issue.type);
     }
   });
 
-  ADMIN_SOCIAL_PRESET_IDS.forEach((id) => {
-    const rowLabel = id === 'github' ? 'GitHub' : id === 'x' ? 'X / Twitter' : 'Email';
-    const orderIssue = presetOrderIssues.get(id);
-    if (orderIssue === 'range') {
-      pushIssue(
-        `site.socialLinks.presetOrder.${id}`,
-        `${rowLabel} 的位置排序必须为 ${ADMIN_SOCIAL_ORDER_MIN}-${ADMIN_SOCIAL_ORDER_MAX} 的整数`
-      );
-      return;
-    }
-    if (orderIssue === 'duplicate') {
-      pushIssue(`site.socialLinks.presetOrder.${id}`, `社交链接位置排序不能重复：${presetOrder[id]}`);
-    }
-  });
-
   if (customLinks.length > ADMIN_SOCIAL_CUSTOM_LIMIT) {
-    pushIssue('site.socialLinks.custom', `自定义链接最多只能添加 ${ADMIN_SOCIAL_CUSTOM_LIMIT} 条`);
+    pushIssue('site.socialLinks.custom', `社交链接最多只能添加 ${ADMIN_SOCIAL_CUSTOM_LIMIT} 条`);
   }
 
   const seenCustomIds = new Set<string>();
@@ -798,8 +714,22 @@ export const validateAdminThemeSettings = (
       pushIssue(`${basePath}.label`, `自定义链接 #${index + 1} 的显示名称只允许单行文本`);
     }
 
-    if (!item.href || !isAdminAllowedHttpsUrl(item.href)) {
-      pushIssue(`${basePath}.href`, `自定义链接 #${index + 1} 的链接必须是合法 https:// 地址`);
+    if (item.visible || item.href) {
+      if (item.iconKey === 'wechat') {
+        if (!normalizeContentImageSource(item.href)) {
+          pushIssue(
+            `${basePath}.href`,
+            `微信公众号 #${index + 1} 必须填写 public 下的相对二维码图片路径或 https:// 图片地址`
+          );
+        }
+      } else if (item.iconKey === 'email') {
+        const email = item.href.startsWith('mailto:') ? item.href.slice(7) : '';
+        if (!ADMIN_EMAIL_RE.test(normalizeEmail(email))) {
+          pushIssue(`${basePath}.href`, `Email #${index + 1} 必须填写合法的 mailto: 邮箱链接`);
+        }
+      } else if (!item.href || !isAdminAllowedHttpsUrl(item.href)) {
+        pushIssue(`${basePath}.href`, `社交链接 #${index + 1} 必须是合法 https:// 地址`);
+      }
     }
     if (!isAdminSocialIconKey(item.iconKey)) {
       pushIssue(`${basePath}.iconKey`, `自定义链接 #${index + 1} 的图标必须从白名单中选择`);

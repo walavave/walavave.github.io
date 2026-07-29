@@ -8,6 +8,7 @@ import {
   normalizeBitsAvatarPath,
   normalizeHeroImageSrc
 } from '../utils/format';
+import { normalizeContentImageSource } from '../utils/image-source';
 import {
   ADMIN_ARTICLE_META_DATE_LABEL_DEFAULT,
   ADMIN_ARTICLE_META_DATE_LABEL_MAX_LENGTH,
@@ -28,9 +29,9 @@ import {
   ADMIN_SEARCH_SUBRESULT_LIMIT_MAX,
   ADMIN_SEARCH_SUBRESULT_LIMIT_MIN,
   ADMIN_HERO_PRESET_SET,
+  ADMIN_SOCIAL_CUSTOM_LIMIT,
   ADMIN_SOCIAL_ORDER_MAX,
   ADMIN_SOCIAL_ORDER_MIN,
-  ADMIN_SOCIAL_PRESET_IDS,
   canonicalizeAdminThemeSettings,
   createAdminWritableThemeSettingsGroups,
   fillAdminThemeSettingsGroupCompatibilityDefaults,
@@ -57,13 +58,14 @@ export type SidebarDividerVariant = 'default' | 'subtle' | 'none';
 export type { ThemeFontId } from './fonts/registry';
 export type TypographyRole = 'readable' | 'copy' | 'mono' | 'brand';
 export type HomeIntroLinkKey = 'archive' | 'essay' | 'bits' | 'memo' | 'about' | 'tag';
-export type SiteSocialPresetId = 'github' | 'x' | 'email';
-export type SiteSocialKind = 'preset' | 'custom';
 export type SiteSocialIconKey =
   | 'github'
   | 'x'
   | 'email'
   | 'weibo'
+  | 'zhihu'
+  | 'wechat'
+  | 'xiaohongshu'
   | 'facebook'
   | 'instagram'
   | 'telegram'
@@ -96,27 +98,16 @@ export interface SiteSocialCustomItem {
   order: number;
 }
 
-export interface SiteSocialPresetOrder {
-  github: number;
-  x: number;
-  email: number;
-}
-
 export interface ResolvedSocialItem {
   id: string;
   label: string;
   href: string;
   iconKey: SiteSocialIconKey;
-  kind: SiteSocialKind;
   visible: boolean;
   order: number;
 }
 
 export interface SiteSocialLinks {
-  github: string | null;
-  x: string | null;
-  email: string | null;
-  presetOrder: SiteSocialPresetOrder;
   custom: SiteSocialCustomItem[];
   resolvedSocialItems: ResolvedSocialItem[];
 }
@@ -236,12 +227,6 @@ export interface ThemeSettingsSources {
     footerCopyright: SettingSource;
     adminOverviewPublicVisible: SettingSource;
     adminOverviewHiddenMessage: SettingSource;
-    socialLinksGithub: SettingSource;
-    socialLinksX: SettingSource;
-    socialLinksEmail: SettingSource;
-    socialLinksGithubOrder: SettingSource;
-    socialLinksXOrder: SettingSource;
-    socialLinksEmailOrder: SettingSource;
     socialLinksCustom: SettingSource;
   };
   shell: {
@@ -305,10 +290,6 @@ export interface ThemeSettingsResolved {
 }
 
 export interface EditableSiteSocialLinks {
-  github: string | null;
-  x: string | null;
-  email: string | null;
-  presetOrder: SiteSocialPresetOrder;
   custom: SiteSocialCustomItem[];
 }
 
@@ -399,17 +380,33 @@ const LEGACY_QUOTE = 'A minimal Astro theme\nfor essays, notes, and docs.\nDesig
 const LEGACY_FOOTER_START_YEAR = 2025;
 const LEGACY_FOOTER_SHOW_CURRENT_YEAR = true;
 const LEGACY_FOOTER_COPYRIGHT = 'Whono · Theme Demo · by cxro';
-const DEFAULT_PRESET_SOCIAL_ORDER: SiteSocialPresetOrder = {
-  github: 1,
-  x: 2,
-  email: 3
-};
 const LEGACY_SOCIAL_LINKS: SiteSocialLinks = {
-  github: 'https://github.com/cxro/astro-whono',
-  x: 'https://twitter.com/yourname',
-  email: 'Whono@linux.do',
-  presetOrder: { ...DEFAULT_PRESET_SOCIAL_ORDER },
-  custom: [],
+  custom: [
+    {
+      id: 'github',
+      label: 'GitHub',
+      href: 'https://github.com/cxro/astro-whono',
+      iconKey: 'github',
+      visible: true,
+      order: 1
+    },
+    {
+      id: 'x',
+      label: 'X',
+      href: 'https://twitter.com/yourname',
+      iconKey: 'x',
+      visible: true,
+      order: 2
+    },
+    {
+      id: 'email',
+      label: 'Email',
+      href: 'mailto:Whono@linux.do',
+      iconKey: 'email',
+      visible: true,
+      order: 3
+    }
+  ],
   resolvedSocialItems: []
 };
 const LEGACY_NAV: SidebarNavItem[] = [
@@ -426,10 +423,6 @@ const cloneNavItems = (items: readonly SidebarNavItem[]): SidebarNavItem[] =>
 
 const cloneSocialCustomItems = (items: readonly SiteSocialCustomItem[]): SiteSocialCustomItem[] =>
   items.map((item) => ({ ...item }));
-
-const clonePresetSocialOrder = (value: Readonly<SiteSocialPresetOrder>): SiteSocialPresetOrder => ({
-  ...value
-});
 
 const cloneResolvedSocialItems = (items: readonly ResolvedSocialItem[]): ResolvedSocialItem[] =>
   items.map((item) => ({ ...item }));
@@ -462,10 +455,6 @@ const DEFAULT_SITE: SiteSettings = {
     hiddenMessage: ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT
   },
   socialLinks: {
-    github: null,
-    x: null,
-    email: null,
-    presetOrder: clonePresetSocialOrder(DEFAULT_PRESET_SOCIAL_ORDER),
     custom: [],
     resolvedSocialItems: []
   }
@@ -545,18 +534,6 @@ const DEFAULT_UI: UiSettings = {
 
 const NAV_IDS: ReadonlySet<SidebarNavId> = new Set(['essay', 'bits', 'memo', 'archive', 'about']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const GITHUB_HOSTS = ['github.com'];
-const X_HOSTS = ['x.com', 'twitter.com'];
-const SOCIAL_CUSTOM_LIMIT = 8;
-const PRESET_SOCIAL_ITEMS: readonly {
-  id: SiteSocialPresetId;
-  label: string;
-  iconKey: SiteSocialIconKey;
-}[] = [
-  { id: 'github', label: 'GitHub', iconKey: 'github' },
-  { id: 'x', label: 'X', iconKey: 'x' },
-  { id: 'email', label: 'Email', iconKey: 'email' }
-];
 
 const SIDEBAR_HREFS: Record<SidebarNavId, string> = {
   essay: '/essay/',
@@ -943,54 +920,29 @@ const normalizeSidebarNavItems = (items: readonly SidebarNavItem[]): SidebarNavI
 };
 
 const normalizeSocialOrderState = (
-  presetOrder: Readonly<SiteSocialPresetOrder>,
   customItems: readonly SiteSocialCustomItem[]
-): { presetOrder: SiteSocialPresetOrder; customItems: SiteSocialCustomItem[] } => {
-  const nextPresetOrder = clonePresetSocialOrder(presetOrder);
+): SiteSocialCustomItem[] => {
   const nextCustomItems = cloneSocialCustomItems(customItems);
   const hasOrderIssues = getAdminSocialOrderIssues(
-    nextPresetOrder,
-    nextCustomItems.map((item, index) => ({
-      key: String(index),
-      order: item.order
-    }))
+    nextCustomItems.map((item, index) => ({ key: String(index), order: item.order }))
   ).length > 0;
 
-  if (!hasOrderIssues) {
-    return {
-      presetOrder: nextPresetOrder,
-      customItems: nextCustomItems
-    };
-  }
+  if (!hasOrderIssues) return nextCustomItems;
 
   const usedOrders = new Set<number>();
-
-  ADMIN_SOCIAL_PRESET_IDS.forEach((id) => {
-    nextPresetOrder[id] = claimAvailableOrder(
-      usedOrders,
-      nextPresetOrder[id],
-      DEFAULT_PRESET_SOCIAL_ORDER[id],
-      isAdminSocialOrderValue,
-      ADMIN_SOCIAL_ORDER_MIN,
-      ADMIN_SOCIAL_ORDER_MAX
-    );
-  });
 
   nextCustomItems.forEach((item, index) => {
     item.order = claimAvailableOrder(
       usedOrders,
       item.order,
-      PRESET_SOCIAL_ITEMS.length + index + 1,
+      index + 1,
       isAdminSocialOrderValue,
       ADMIN_SOCIAL_ORDER_MIN,
       ADMIN_SOCIAL_ORDER_MAX
     );
   });
 
-  return {
-    presetOrder: nextPresetOrder,
-    customItems: nextCustomItems
-  };
+  return nextCustomItems;
 };
 
 const parseSidebarNav = (value: unknown): SidebarNavItem[] | undefined => {
@@ -1028,6 +980,18 @@ const parseSidebarNav = (value: unknown): SidebarNavItem[] | undefined => {
   return Array.from(merged.values()).sort((a, b) => a.order - b.order);
 };
 
+const parseSocialHref = (value: unknown, iconKey: SiteSocialIconKey): string | undefined => {
+  if (iconKey === 'wechat') {
+    return typeof value === 'string' ? normalizeContentImageSource(value) ?? undefined : undefined;
+  }
+  if (iconKey === 'email') {
+    if (typeof value !== 'string') return undefined;
+    const email = asEmailAddress(value.replace(/^mailto:/i, ''));
+    return email ? `mailto:${email}` : undefined;
+  }
+  return asHttpsUrl(value) ?? undefined;
+};
+
 const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefined => {
   if (!Array.isArray(value)) return undefined;
 
@@ -1038,8 +1002,10 @@ const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefi
     if (!isRecord(row)) continue;
 
     const label = asNonEmptyString(row.label);
-    const href = asHttpsUrl(row.href);
-    if (!label || !href) continue;
+    const iconKey = asSocialIconKey(row.iconKey) ?? 'website';
+    const visible = asBoolean(row.visible) ?? true;
+    const href = parseSocialHref(row.href, iconKey);
+    if (!label || (!href && visible)) continue;
 
     const baseId = asNonEmptyString(row.id) ?? `custom-${index + 1}`;
     let id = baseId;
@@ -1054,16 +1020,60 @@ const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefi
     normalized.push({
       id,
       label,
-      href,
-      iconKey: asSocialIconKey(row.iconKey) ?? 'website',
-      visible: asBoolean(row.visible) ?? true,
+      href: href ?? '',
+      iconKey,
+      visible,
       order: rawOrder !== undefined && isAdminSocialOrderValue(rawOrder) ? rawOrder : index + 1
     });
 
-    if (normalized.length >= SOCIAL_CUSTOM_LIMIT) break;
+    if (normalized.length >= ADMIN_SOCIAL_CUSTOM_LIMIT) break;
   }
 
   return normalized;
+};
+
+const parseLegacySocialItems = (
+  socialLinks: Record<string, unknown>,
+  customItems: readonly SiteSocialCustomItem[]
+): SiteSocialCustomItem[] => {
+  const presetOrder = isRecord(socialLinks.presetOrder) ? socialLinks.presetOrder : {};
+  const presets: SiteSocialCustomItem[] = [];
+  const github = asHttpsUrl(socialLinks.github, ['github.com']);
+  const x = asHttpsUrl(socialLinks.x, ['x.com', 'twitter.com']);
+  const email = asEmailAddress(socialLinks.email);
+
+  if (github) {
+    presets.push({
+      id: 'github',
+      label: 'GitHub',
+      href: github,
+      iconKey: 'github',
+      visible: true,
+      order: asPresetSocialOrderValue(presetOrder.github) ?? 1
+    });
+  }
+  if (x) {
+    presets.push({
+      id: 'x',
+      label: 'X',
+      href: x,
+      iconKey: 'x',
+      visible: true,
+      order: asPresetSocialOrderValue(presetOrder.x) ?? 2
+    });
+  }
+  if (email) {
+    presets.push({
+      id: 'email',
+      label: 'Email',
+      href: `mailto:${email}`,
+      iconKey: 'email',
+      visible: true,
+      order: asPresetSocialOrderValue(presetOrder.email) ?? 3
+    });
+  }
+
+  return [...presets, ...customItems];
 };
 
 const parseHomeIntroLinks = (value: unknown): HomeIntroLinkKey[] | undefined => {
@@ -1084,44 +1094,13 @@ const parseHomeIntroLinks = (value: unknown): HomeIntroLinkKey[] | undefined => 
   return normalized.length ? normalized : undefined;
 };
 
-const buildResolvedSocialItems = (
-  socialLinks: Pick<SiteSocialLinks, 'github' | 'x' | 'email' | 'presetOrder'>,
-  customItems: readonly SiteSocialCustomItem[]
-): ResolvedSocialItem[] => {
-  const presetItems = PRESET_SOCIAL_ITEMS.flatMap((item, index) => {
-    const href =
-      item.id === 'email'
-        ? socialLinks.email
-          ? `mailto:${socialLinks.email}`
-          : null
-        : socialLinks[item.id];
-
-    if (!href) return [];
-
-    return [
-      {
-        id: item.id,
-        label: item.label,
-        href,
-        iconKey: item.iconKey,
-        kind: 'preset' as const,
-        visible: true,
-        order: socialLinks.presetOrder[item.id],
-        sortIndex: index
-      }
-    ];
-  });
-
-  const customResolved = customItems.map((item, index) => ({
+const buildResolvedSocialItems = (customItems: readonly SiteSocialCustomItem[]): ResolvedSocialItem[] =>
+  customItems.map((item, index) => ({
     ...item,
-    kind: 'custom' as const,
-    sortIndex: PRESET_SOCIAL_ITEMS.length + index
-  }));
-
-  return [...presetItems, ...customResolved]
+    sortIndex: index
+  }))
     .sort((a, b) => a.order - b.order || a.sortIndex - b.sortIndex)
     .map(({ sortIndex: _sortIndex, ...item }) => item);
-};
 
 export const getThemeSettings = (): ThemeSettingsResolved => {
   if (shouldCacheThemeSettings && cachedSettings) return cachedSettings;
@@ -1135,7 +1114,6 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
   const siteFooterJson = isRecord(siteJson?.footer) ? siteJson.footer : undefined;
   const siteAdminOverviewJson = isRecord(siteJson?.adminOverview) ? siteJson.adminOverview : undefined;
   const siteSocialLinksJson = isRecord(siteJson?.socialLinks) ? siteJson.socialLinks : undefined;
-  const siteSocialPresetOrderJson = isRecord(siteSocialLinksJson?.presetOrder) ? siteSocialLinksJson.presetOrder : undefined;
   const pageEssayJson = isRecord(pageJson?.essay) ? pageJson.essay : undefined;
   const pageArchiveJson = isRecord(pageJson?.archive) ? pageJson.archive : undefined;
   const pageBitsJson = isRecord(pageJson?.bits) ? pageJson.bits : undefined;
@@ -1183,39 +1161,18 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
     undefined,
     DEFAULT_SITE.adminOverview.hiddenMessage
   );
-  const socialLinksGithub = resolveValue(
-    asHttpsUrl(siteSocialLinksJson?.github, GITHUB_HOSTS),
-    LEGACY_SOCIAL_LINKS.github,
-    DEFAULT_SITE.socialLinks.github
-  );
-  const socialLinksX = resolveValue(
-    asHttpsUrl(siteSocialLinksJson?.x, X_HOSTS),
-    LEGACY_SOCIAL_LINKS.x,
-    DEFAULT_SITE.socialLinks.x
-  );
-  const socialLinksEmail = resolveValue(
-    asEmailAddress(siteSocialLinksJson?.email),
-    LEGACY_SOCIAL_LINKS.email,
-    DEFAULT_SITE.socialLinks.email
-  );
-  const socialLinksGithubOrder = resolveValue(
-    asPresetSocialOrderValue(siteSocialPresetOrderJson?.github),
-    LEGACY_SOCIAL_LINKS.presetOrder.github,
-    DEFAULT_SITE.socialLinks.presetOrder.github
-  );
-  const socialLinksXOrder = resolveValue(
-    asPresetSocialOrderValue(siteSocialPresetOrderJson?.x),
-    LEGACY_SOCIAL_LINKS.presetOrder.x,
-    DEFAULT_SITE.socialLinks.presetOrder.x
-  );
-  const socialLinksEmailOrder = resolveValue(
-    asPresetSocialOrderValue(siteSocialPresetOrderJson?.email),
-    LEGACY_SOCIAL_LINKS.presetOrder.email,
-    DEFAULT_SITE.socialLinks.presetOrder.email
-  );
+  const parsedSocialItems = parseSocialCustomItems(siteSocialLinksJson?.custom);
+  const hasLegacySocialFields = Boolean(siteSocialLinksJson && (
+    Object.hasOwn(siteSocialLinksJson, 'github')
+    || Object.hasOwn(siteSocialLinksJson, 'x')
+    || Object.hasOwn(siteSocialLinksJson, 'email')
+    || Object.hasOwn(siteSocialLinksJson, 'presetOrder')
+  ));
   const socialLinksCustom = resolveValue(
-    parseSocialCustomItems(siteSocialLinksJson?.custom),
-    undefined,
+    hasLegacySocialFields && siteSocialLinksJson
+      ? parseLegacySocialItems(siteSocialLinksJson, parsedSocialItems ?? [])
+      : parsedSocialItems,
+    LEGACY_SOCIAL_LINKS.custom,
     DEFAULT_SITE.socialLinks.custom
   );
 
@@ -1429,25 +1386,8 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
   );
 
   const normalizedNav = normalizeSidebarNavItems(nav.value);
-  const normalizedSocialOrderState = normalizeSocialOrderState(
-    {
-      github: socialLinksGithubOrder.value,
-      x: socialLinksXOrder.value,
-      email: socialLinksEmailOrder.value
-    },
-    socialLinksCustom.value
-  );
-  const customSocialItems = cloneSocialCustomItems(normalizedSocialOrderState.customItems);
-  const presetSocialOrder = clonePresetSocialOrder(normalizedSocialOrderState.presetOrder);
-  const resolvedSocialItems = buildResolvedSocialItems(
-    {
-      github: socialLinksGithub.value,
-      x: socialLinksX.value,
-      email: socialLinksEmail.value,
-      presetOrder: presetSocialOrder
-    },
-    customSocialItems
-  );
+  const customSocialItems = normalizeSocialOrderState(socialLinksCustom.value);
+  const resolvedSocialItems = buildResolvedSocialItems(customSocialItems);
 
   const resolved: ThemeSettingsResolved = {
     settings: {
@@ -1465,10 +1405,6 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
           hiddenMessage: adminOverviewHiddenMessage.value
         },
         socialLinks: {
-          github: socialLinksGithub.value,
-          x: socialLinksX.value,
-          email: socialLinksEmail.value,
-          presetOrder: clonePresetSocialOrder(presetSocialOrder),
           custom: cloneSocialCustomItems(customSocialItems),
           resolvedSocialItems: cloneResolvedSocialItems(resolvedSocialItems)
         }
@@ -1555,12 +1491,6 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
         footerCopyright: footerCopyright.source,
         adminOverviewPublicVisible: adminOverviewPublicVisible.source,
         adminOverviewHiddenMessage: adminOverviewHiddenMessage.source,
-        socialLinksGithub: socialLinksGithub.source,
-        socialLinksX: socialLinksX.source,
-        socialLinksEmail: socialLinksEmail.source,
-        socialLinksGithubOrder: socialLinksGithubOrder.source,
-        socialLinksXOrder: socialLinksXOrder.source,
-        socialLinksEmailOrder: socialLinksEmailOrder.source,
         socialLinksCustom: socialLinksCustom.source
       },
       shell: {
@@ -1654,10 +1584,6 @@ const buildEditableThemeSettingsSnapshot = (
         ...resolved.settings.site.adminOverview
       },
       socialLinks: {
-        github: resolved.settings.site.socialLinks.github,
-        x: resolved.settings.site.socialLinks.x,
-        email: resolved.settings.site.socialLinks.email,
-        presetOrder: clonePresetSocialOrder(resolved.settings.site.socialLinks.presetOrder),
         custom: cloneSocialCustomItems(resolved.settings.site.socialLinks.custom)
       }
     },

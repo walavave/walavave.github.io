@@ -61,7 +61,7 @@ const renderContactIconHtml = (iconKey: SiteSocialIconKey): string => {
 export const renderAboutContactLinksHtml = (
   socialItems: readonly ResolvedSocialItem[]
 ): string => {
-  const items = socialItems.filter((item) => item.visible);
+  const items = socialItems.filter((item) => item.visible && item.iconKey !== 'wechat');
   if (items.length === 0) return '';
 
   const listItems = items.map((item) => [

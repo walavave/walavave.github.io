@@ -145,12 +145,9 @@ export const bindAdminThemeSocialEvents = ({
   } = controls;
   const {
     getCustomRows,
-    getPresetRowHrefInput,
-    getPresetRowOrderInput,
     getStoredGeneratedCustomId,
     getStoredGeneratedCustomLabel,
     getNextSocialOrder,
-    syncPresetRow,
     normalizeSocialOrders,
     syncCustomRow,
     updateCustomRowsUi,
@@ -161,7 +158,7 @@ export const bindAdminThemeSocialEvents = ({
 
   socialCustomAddBtn.addEventListener('click', () => {
     if (getCustomRows().length >= ADMIN_SOCIAL_CUSTOM_LIMIT) {
-      uiState.setStatus('warn', '自定义链接已达到上限');
+      uiState.setStatus('warn', '社交链接已达到上限');
       return;
     }
     const row = createCustomRow(
@@ -184,15 +181,6 @@ export const bindAdminThemeSocialEvents = ({
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    const presetRow = target.closest('[data-social-preset-row]');
-    if (presetRow) {
-      if (target.matches('[data-social-preset-field="order"], [data-social-preset-field="href"]')) {
-        normalizeSocialOrders();
-      }
-      syncPresetRow(presetRow);
-      return;
-    }
-
     const row = target.closest('[data-social-custom-row]');
     if (!(row instanceof HTMLElement)) return;
 
@@ -209,12 +197,6 @@ export const bindAdminThemeSocialEvents = ({
   socialCustomList.addEventListener('input', (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-
-    const presetRow = target.closest('[data-social-preset-row]');
-    if (presetRow) {
-      syncPresetRow(presetRow);
-      return;
-    }
 
     if (!(target instanceof HTMLInputElement)) return;
     const row = target.closest('[data-social-custom-row]');
@@ -252,34 +234,6 @@ export const bindAdminThemeSocialEvents = ({
   socialCustomList.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-
-    const presetActionBtn = target.closest('[data-social-preset-action]');
-    if (presetActionBtn instanceof HTMLButtonElement) {
-      const presetRow = presetActionBtn.closest('[data-social-preset-row]');
-      if (!(presetRow instanceof HTMLElement)) return;
-      const action = presetActionBtn.getAttribute('data-social-preset-action');
-
-      if (action === 'toggle-visible') {
-        const hrefInput = getPresetRowHrefInput(presetRow);
-        const orderInput = getPresetRowOrderInput(presetRow);
-        if (!(hrefInput instanceof HTMLInputElement) || !(orderInput instanceof HTMLInputElement)) return;
-
-        const visible = hrefInput.value.trim().length > 0;
-        if (visible) {
-          presetRow.dataset.stashedHref = hrefInput.value.trim();
-          presetRow.dataset.stashedOrder = orderInput.value.trim();
-          hrefInput.value = '';
-        } else {
-          hrefInput.value = presetRow.dataset.stashedHref || '';
-          orderInput.value = presetRow.dataset.stashedOrder || String(getNextSocialOrder());
-        }
-
-        normalizeSocialOrders();
-        syncPresetRow(presetRow);
-        refreshDirty();
-      }
-      return;
-    }
 
     const actionBtn = target.closest('[data-social-custom-action]');
     if (!(actionBtn instanceof HTMLButtonElement)) return;

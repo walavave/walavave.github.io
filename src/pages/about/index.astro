@@ -6,6 +6,7 @@ import '../../styles/about.css';
 import { getThemeSettings } from '../../lib/theme-settings';
 import { replaceAboutContactLinksPlaceholderHtml } from '../../lib/about-contact-links';
 import { rewriteRenderedContentImageUrls } from '../../lib/content-local-images.mjs';
+import { createWithBase } from '../../utils/format';
 
 const entry = await getEntry('about', 'index');
 if (!entry) {
@@ -14,6 +15,7 @@ if (!entry) {
 
 const { settings } = getThemeSettings();
 const resolvedSocialItems = settings.site.socialLinks.resolvedSocialItems.filter((item) => item.visible);
+const withBase = createWithBase(import.meta.env.BASE_URL ?? '/');
 const aboutTitle = settings.page.about.title || '关于';
 const aboutSubtitle = settings.page.about.subtitle;
 const entrySourcePath = typeof (entry as { filePath?: unknown })?.filePath === 'string'
@@ -50,7 +52,30 @@ const { Content } = await render(entryWithContactLinks);
     {
       resolvedSocialItems.length ? (
         <div class="page-actions">
-          {resolvedSocialItems.map((item) => (
+          {resolvedSocialItems.map((item) => item.iconKey === 'wechat' ? (
+            <span class="wechat-qr">
+              <button
+                class="icon-link"
+                type="button"
+                aria-label={`显示${item.label}二维码`}
+                title={item.label}
+              >
+                <BrandIcon name={item.iconKey} class="icon" />
+              </button>
+              <span class="wechat-qr__popover">
+                <img
+                  class="wechat-qr__image"
+                  src={withBase(item.href)}
+                  alt={`${item.label}二维码`}
+                  width="160"
+                  height="160"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="wechat-qr__label">{item.label}</span>
+              </span>
+            </span>
+          ) : (
             <a class="icon-link" href={item.href} aria-label={item.label} title={item.label}>
               <BrandIcon name={item.iconKey} class="icon" />
             </a>

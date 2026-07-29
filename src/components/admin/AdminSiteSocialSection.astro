@@ -1,7 +1,6 @@
 ---
-import type { SiteSocialIconKey, SiteSocialPresetId } from '../../lib/theme-settings';
+import type { SiteSocialIconKey } from '../../lib/theme-settings';
 import AdminSocialCustomRowTemplate from './AdminSocialCustomRowTemplate.astro';
-import AdminSocialPresetRow from './AdminSocialPresetRow.astro';
 
 interface Props {
   socialCustomLimit: number;
@@ -11,71 +10,27 @@ const { socialCustomLimit } = Astro.props;
 
 type SocialIconOption = {
   value: SiteSocialIconKey;
-  optionLabel: string;
-  defaultLabel: string;
-};
-
-type SocialPresetRow = {
-  id: SiteSocialPresetId;
   label: string;
-  orderInputId: string;
-  inputId: string;
-  inputType: 'url' | 'email';
-  inputMode: 'url' | 'email';
-  autoComplete: string;
-  placeholder: string;
 };
 
 const socialIconOptions: readonly SocialIconOption[] = [
-  { value: 'github', optionLabel: 'GitHub', defaultLabel: 'GitHub' },
-  { value: 'x', optionLabel: 'X', defaultLabel: 'X' },
-  { value: 'email', optionLabel: 'Email', defaultLabel: 'Email' },
-  { value: 'weibo', optionLabel: '微博', defaultLabel: '微博' },
-  { value: 'facebook', optionLabel: 'Facebook', defaultLabel: 'Facebook' },
-  { value: 'instagram', optionLabel: 'Instagram', defaultLabel: 'Instagram' },
-  { value: 'telegram', optionLabel: 'Telegram', defaultLabel: 'Telegram' },
-  { value: 'mastodon', optionLabel: 'Mastodon', defaultLabel: 'Mastodon' },
-  { value: 'bilibili', optionLabel: 'Bilibili', defaultLabel: 'Bilibili' },
-  { value: 'youtube', optionLabel: 'YouTube', defaultLabel: 'YouTube' },
-  { value: 'linkedin', optionLabel: 'LinkedIn', defaultLabel: 'LinkedIn' },
-  { value: 'website', optionLabel: '网站', defaultLabel: '网站' }
+  { value: 'github', label: 'GitHub' },
+  { value: 'x', label: 'X' },
+  { value: 'email', label: 'Email' },
+  { value: 'weibo', label: '微博' },
+  { value: 'zhihu', label: '知乎' },
+  { value: 'wechat', label: '微信公众号' },
+  { value: 'xiaohongshu', label: '小红书' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'mastodon', label: 'Mastodon' },
+  { value: 'bilibili', label: 'Bilibili' },
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'website', label: '网站' }
 ];
-const customSocialIconOptions = socialIconOptions.filter(
-  (option) => option.value !== 'github' && option.value !== 'x' && option.value !== 'email'
-);
-const defaultCustomSocialIconKey: SiteSocialIconKey = customSocialIconOptions[0]?.value ?? 'website';
-const socialPresetRows: readonly SocialPresetRow[] = [
-  {
-    id: 'github',
-    label: 'GitHub',
-    orderInputId: 'site-social-github-order',
-    inputId: 'site-social-github',
-    inputType: 'url',
-    inputMode: 'url',
-    autoComplete: 'url',
-    placeholder: 'https://github.com/username'
-  },
-  {
-    id: 'x',
-    label: 'X',
-    orderInputId: 'site-social-x-order',
-    inputId: 'site-social-x',
-    inputType: 'url',
-    inputMode: 'url',
-    autoComplete: 'url',
-    placeholder: 'https://x.com/username'
-  },
-  {
-    id: 'email',
-    label: 'Email',
-    orderInputId: 'site-social-email-order',
-    inputId: 'site-social-email',
-    inputType: 'email',
-    inputMode: 'email',
-    autoComplete: 'email',
-    placeholder: 'name@example.com'
-  }
-];
+const defaultCustomSocialIconKey: SiteSocialIconKey = socialIconOptions[0]?.value ?? 'website';
 ---
 
 <div class="admin-subgroup">
@@ -84,7 +39,7 @@ const socialPresetRows: readonly SocialPresetRow[] = [
       <p class="admin-subtitle admin-subtitle--compact">
         <span class="admin-subtitle__main">社交链接</span>
         <span id="site-social-custom-count" class="admin-subtitle__hint admin-social-count">
-          (新增 0 / {socialCustomLimit})
+          (0 / {socialCustomLimit})
         </span>
       </p>
       <div class="admin-social-actions">
@@ -101,15 +56,13 @@ const socialPresetRows: readonly SocialPresetRow[] = [
         <span class="admin-social-header__href">链接地址</span>
         <span class="admin-social-header__actions">操作</span>
       </div>
-      <div id="site-social-custom-list" class="admin-social-list">
-        {socialPresetRows.map((row) => <AdminSocialPresetRow row={row} />)}
-      </div>
+      <div id="site-social-custom-list" class="admin-social-list"></div>
     </div>
   </div>
 
   <AdminSocialCustomRowTemplate
     socialIconOptions={socialIconOptions}
-    customSocialIconOptions={customSocialIconOptions}
+    customSocialIconOptions={socialIconOptions}
     defaultCustomSocialIconKey={defaultCustomSocialIconKey}
   />
 </div>

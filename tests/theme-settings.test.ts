@@ -56,6 +56,19 @@ describe('theme-settings revision semantics', () => {
     expect('resolvedSocialItems' in payload.settings.site.socialLinks).toBe(false);
   });
 
+  it('keeps every social platform in the editable site.json list', () => {
+    const socialLinks = getEditableThemeSettingsPayload().settings.site.socialLinks;
+    const ids = socialLinks.custom.map((item) => item.id);
+
+    expect(ids).toEqual(expect.arrayContaining(['github', 'x', 'email']));
+    expect('github' in socialLinks).toBe(false);
+    expect('x' in socialLinks).toBe(false);
+    expect('email' in socialLinks).toBe(false);
+    expect('presetOrder' in socialLinks).toBe(false);
+    expect(socialLinks.custom.find((item) => item.id === 'email')?.href).toBe('mailto:walavave@gmail.com');
+    expect(socialLinks.custom.find((item) => item.id === 'x')?.visible).toBe(false);
+  });
+
   it('keeps revision stable when only sources change', () => {
     const resolved = getThemeSettings();
     const mutated = structuredClone(resolved);

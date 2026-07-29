@@ -453,8 +453,9 @@ describe('admin preview api', () => {
     expect(payload.result.html).not.toContain('about-site-info__eyebrow');
     expect(payload.result.html).not.toContain('src="/author/avatar.webp"');
     expect(payload.result.html).toContain('class="contact-list"');
-    expect(payload.result.html).toContain(`href="${getThemeSettings().settings.site.socialLinks.github}"`);
-    expect(payload.result.html).toContain(`href="mailto:${getThemeSettings().settings.site.socialLinks.email}"`);
+    const socialItems = getThemeSettings().settings.site.socialLinks.resolvedSocialItems;
+    expect(payload.result.html).toContain(`href="${socialItems.find((item) => item.iconKey === 'github')?.href}"`);
+    expect(payload.result.html).toContain(`href="${socialItems.find((item) => item.iconKey === 'email')?.href}"`);
     expect(payload.result.html).not.toContain('data-about-contact-links');
     expect(payload.result.html).not.toContain('javascript:alert');
     expect(payload.result.html).not.toContain('http://bad.example');

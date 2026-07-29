@@ -6,8 +6,7 @@ import AdminIcon from './AdminIcon.astro';
 
 interface SocialIconOption {
   value: SiteSocialIconKey;
-  optionLabel: string;
-  defaultLabel: string;
+  label: string;
 }
 
 interface Props {
@@ -44,8 +43,8 @@ const { socialIconOptions, customSocialIconOptions, defaultCustomSocialIconKey }
       <select class="admin-field__control" data-social-custom-field="iconKey" name="site-social-custom-icon-key[]">
         {
           customSocialIconOptions.map((option) => (
-            <option value={option.value} data-social-default-label={option.defaultLabel}>
-              {option.optionLabel}
+            <option value={option.value} data-social-default-label={option.label}>
+              {option.label}
             </option>
           ))
         }
@@ -72,7 +71,7 @@ const { socialIconOptions, customSocialIconOptions, defaultCustomSocialIconKey }
     </div>
 
     <label class="admin-field admin-social-field admin-social-field--href">
-      <span class="admin-social-cell-label">链接地址</span>
+      <span class="admin-social-cell-label">链接或图片路径</span>
       <span class="admin-social-link-inline">
         <span class="admin-social-link-label" hidden>
           <input
@@ -89,10 +88,10 @@ const { socialIconOptions, customSocialIconOptions, defaultCustomSocialIconKey }
           class="admin-field__control admin-field__control--soft admin-social-link-inline__href"
           data-social-custom-field="href"
           name="site-social-custom-href[]"
-          type="url"
+          type="text"
           inputmode="url"
           autocomplete="off"
-          placeholder="https://example.com"
+            placeholder="https://example.com、mailto:name@example.com 或图片路径"
         />
       </span>
     </label>

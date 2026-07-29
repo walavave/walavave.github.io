@@ -1,11 +1,9 @@
-import type { SiteSocialIconKey, SiteSocialPresetId } from '@/lib/theme-settings';
+import type { SiteSocialIconKey } from '@/lib/theme-settings';
 import {
   ADMIN_SOCIAL_CUSTOM_LIMIT,
-  ADMIN_SOCIAL_PRESET_ORDER_DEFAULT,
-  normalizeAdminSocialIconKey,
-  isAdminSocialPresetId
+  normalizeAdminSocialIconKey
 } from '@/lib/admin-console/theme-shared';
-import type { EditableCustomSocialItem, SocialPresetOrder } from './form-codec';
+import type { EditableCustomSocialItem } from './form-codec';
 
 type Query = <T extends Element>(parent: ParentNode, selector: string) => T | null;
 type QueryAll = <T extends Element>(parent: ParentNode, selector: string) => T[];
@@ -18,9 +16,6 @@ type SocialLinksContext = {
   socialCustomCountEl: HTMLElement;
   socialCustomAddBtn: HTMLButtonElement;
   socialCustomTemplate: HTMLTemplateElement;
-  inputSiteSocialGithubOrder: HTMLInputElement;
-  inputSiteSocialXOrder: HTMLInputElement;
-  inputSiteSocialEmailOrder: HTMLInputElement;
 };
 
 const parseOrder = (value: string | number | null | undefined, fallback: number): number => {
@@ -42,12 +37,8 @@ export const createSocialLinks = ({
   socialCustomHead,
   socialCustomCountEl,
   socialCustomAddBtn,
-  socialCustomTemplate,
-  inputSiteSocialGithubOrder,
-  inputSiteSocialXOrder,
-  inputSiteSocialEmailOrder
+  socialCustomTemplate
 }: SocialLinksContext) => {
-  const getPresetRows = (): HTMLElement[] => queryAll<HTMLElement>(socialCustomList, '[data-social-preset-row]');
   const getCustomRows = (): HTMLElement[] => queryAll<HTMLElement>(socialCustomList, '[data-social-custom-row]');
 
   const fallbackCustomSocialIconKey: SiteSocialIconKey = 'website';
@@ -82,34 +73,6 @@ export const createSocialLinks = ({
     || customSocialIconLabels.get(fallbackCustomSocialIconKey)
     || customSocialIconLabels.get(defaultCustomSocialIconKey)
     || '链接';
-  const isEditableCustomLabelIconKey = (iconKey: SiteSocialIconKey): boolean =>
-    iconKey === fallbackCustomSocialIconKey;
-
-  const getPresetRowId = (row: Element | null): SiteSocialPresetId => {
-    const value = row?.getAttribute('data-social-preset-id')?.trim() ?? 'github';
-    return isAdminSocialPresetId(value) ? value : 'github';
-  };
-
-  const getPresetOrderInputs = (): Record<SiteSocialPresetId, HTMLInputElement> => ({
-    github: inputSiteSocialGithubOrder,
-    x: inputSiteSocialXOrder,
-    email: inputSiteSocialEmailOrder
-  });
-
-  const getPresetSocialOrder = (): SocialPresetOrder => {
-    const inputs = getPresetOrderInputs();
-    return {
-      github: parseOrder(inputs.github.value, ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.github),
-      x: parseOrder(inputs.x.value, ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.x),
-      email: parseOrder(inputs.email.value, ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.email)
-    };
-  };
-
-  const getPresetFieldTarget = (id: SiteSocialPresetId, field: 'order' | 'href') => (): HTMLElement | null => {
-    const row = getPresetRows().find((currentRow) => getPresetRowId(currentRow) === id) ?? null;
-    return row ? query<HTMLElement>(row, `[data-social-preset-field="${field}"]`) : null;
-  };
-
   const getCustomFieldTarget = (
     index: number,
     field: 'order' | 'iconKey' | 'id' | 'label' | 'href'
@@ -140,61 +103,21 @@ export const createSocialLinks = ({
   const getCustomRowLabelField = (row: Element | null): HTMLElement | null =>
     row ? query<HTMLElement>(row, '.admin-social-link-label') : null;
 
-  const getPresetRowHrefInput = (row: Element | null): HTMLInputElement | null =>
-    row ? query<HTMLInputElement>(row, '[data-social-preset-field="href"]') : null;
-
-  const getPresetRowOrderInput = (row: Element | null): HTMLInputElement | null =>
-    row ? query<HTMLInputElement>(row, '[data-social-preset-field="order"]') : null;
-
-  const isPresetRowVisible = (row: Element | null): boolean => {
-    const hrefInput = getPresetRowHrefInput(row);
-    return hrefInput instanceof HTMLInputElement && hrefInput.value.trim().length > 0;
-  };
-
-  const syncPresetRow = (row: Element | null): void => {
-    if (!row) return;
-    const toggleBtn = query<HTMLButtonElement>(row, '[data-social-preset-action="toggle-visible"]');
-    if (!(toggleBtn instanceof HTMLButtonElement)) return;
-
-    const presetId = getPresetRowId(row);
-    const label = presetId === 'x' ? 'X' : presetId === 'email' ? 'Email' : 'GitHub';
-    const visible = isPresetRowVisible(row);
-    toggleBtn.dataset.state = visible ? 'visible' : 'hidden';
-    toggleBtn.setAttribute('aria-pressed', visible ? 'true' : 'false');
-    toggleBtn.setAttribute('aria-label', visible ? `隐藏 ${label}` : `恢复 ${label}`);
-    toggleBtn.setAttribute('title', visible ? `隐藏 ${label}` : `恢复 ${label}`);
-  };
-
   const normalizeSocialOrders = (): void => {
     type SocialOrderItem = {
       row: HTMLElement;
-      type: 'preset' | 'custom';
       visible: boolean;
       order: number;
       tie: number;
     };
 
-    const presetRows = getPresetRows();
     const customRows = getCustomRows();
-    const items: SocialOrderItem[] = [
-      ...presetRows.map((row, index) => ({
-        row,
-        type: 'preset' as const,
-        visible: isPresetRowVisible(row),
-        order: parseOrder(
-          getPresetRowOrderInput(row)?.value || '',
-          ADMIN_SOCIAL_PRESET_ORDER_DEFAULT[getPresetRowId(row)]
-        ),
-        tie: index
-      })),
-      ...customRows.map((row, index) => ({
-        row,
-        type: 'custom' as const,
-        visible: Boolean(query<HTMLInputElement>(row, '[data-social-custom-field="visible"]')?.checked),
-        order: parseOrder(query<HTMLInputElement>(row, '[data-social-custom-field="order"]')?.value || '', index + 1),
-        tie: presetRows.length + index
-      }))
-    ];
+    const items: SocialOrderItem[] = customRows.map((row, index) => ({
+      row,
+      visible: Boolean(query<HTMLInputElement>(row, '[data-social-custom-field="visible"]')?.checked),
+      order: parseOrder(query<HTMLInputElement>(row, '[data-social-custom-field="order"]')?.value || '', index + 1),
+      tie: index
+    }));
 
     const orderedItems = [
       ...items.filter((item) => item.visible).sort((a, b) => a.order - b.order || a.tie - b.tie),
@@ -202,32 +125,19 @@ export const createSocialLinks = ({
     ];
 
     orderedItems.forEach((item, index) => {
-      const nextValue = String(index + 1);
-      if (item.type === 'preset') {
-        const orderInput = getPresetRowOrderInput(item.row);
-        if (orderInput instanceof HTMLInputElement) orderInput.value = nextValue;
-      } else {
-        const orderInput = query<HTMLInputElement>(item.row, '[data-social-custom-field="order"]');
-        if (orderInput instanceof HTMLInputElement) orderInput.value = nextValue;
-      }
+      const orderInput = query<HTMLInputElement>(item.row, '[data-social-custom-field="order"]');
+      if (orderInput instanceof HTMLInputElement) orderInput.value = String(index + 1);
     });
   };
 
   const normalizeCustomSocialLabel = (value: unknown, iconKey: SiteSocialIconKey): string => {
-    if (!isEditableCustomLabelIconKey(iconKey)) {
-      return getDefaultCustomSocialLabel(iconKey);
-    }
     const normalized = normalizeTrimmed(value);
     return normalized || getDefaultCustomSocialLabel(iconKey);
   };
 
   const getDisplayCustomSocialLabel = (value: unknown, iconKey: SiteSocialIconKey): string => {
     const normalized = normalizeTrimmed(value);
-    if (!isEditableCustomLabelIconKey(iconKey)) {
-      return normalized || getDefaultCustomSocialLabel(iconKey);
-    }
-    const defaultLabel = getDefaultCustomSocialLabel(iconKey);
-    return normalized && normalized !== defaultLabel ? normalized : '';
+    return normalized || getDefaultCustomSocialLabel(iconKey);
   };
 
   const slugifyIdPart = (value: unknown): string => {
@@ -305,11 +215,9 @@ export const createSocialLinks = ({
   };
 
   const getNextSocialOrder = (): number => {
-    const presetOrders = Object.values(getPresetSocialOrder());
-    const customOrders = getCustomRows()
+    const orders = getCustomRows()
       .map((row) => parseInteger(query<HTMLInputElement>(row, '[data-social-custom-field="order"]')?.value))
       .filter((value): value is number => value != null);
-    const orders = [...presetOrders, ...customOrders];
     return orders.length ? Math.max(...orders) + 1 : 1;
   };
 
@@ -385,19 +293,13 @@ export const createSocialLinks = ({
   ): void => {
     const { syncValue = false } = options;
     const labelField = getCustomRowLabelField(row);
-    const iconKey = getCustomRowIconKey(row);
-    const editable = isEditableCustomLabelIconKey(iconKey);
-    row.dataset.customLabelVisible = String(editable);
+    row.dataset.customLabelVisible = 'true';
     if (labelField instanceof HTMLElement) {
-      labelField.hidden = !editable;
-    }
-
-    if (!editable) {
-      applyGeneratedCustomLabel(row, getDefaultCustomSocialLabel(iconKey));
-      return;
+      labelField.hidden = false;
     }
 
     if (syncValue) {
+      const iconKey = getCustomRowIconKey(row);
       const nextGeneratedLabel = getDefaultCustomSocialLabel(iconKey);
       if (shouldAutoSyncCustomLabel(row)) {
         applyGeneratedCustomLabel(row, nextGeneratedLabel);
@@ -425,7 +327,7 @@ export const createSocialLinks = ({
   const updateCustomRowsUi = (): void => {
     const rows = getCustomRows();
     socialCustomHead.hidden = false;
-    socialCustomCountEl.textContent = `(新增 ${rows.length} / ${ADMIN_SOCIAL_CUSTOM_LIMIT})`;
+    socialCustomCountEl.textContent = `(${rows.length} / ${ADMIN_SOCIAL_CUSTOM_LIMIT})`;
     socialCustomAddBtn.disabled = rows.length >= ADMIN_SOCIAL_CUSTOM_LIMIT;
   };
 
@@ -472,14 +374,13 @@ export const createSocialLinks = ({
     visibleInput.checked = item?.visible !== false;
     row.dataset.generatedLabel = getDefaultCustomSocialLabel(initialIconKey);
     row.dataset.labelManual =
-      isEditableCustomLabelIconKey(initialIconKey)
-      && initialDisplayLabel
+      initialDisplayLabel
       && initialLabel !== row.dataset.generatedLabel
         ? 'true'
         : 'false';
     syncCustomRow(row, {
       syncId: !item?.id,
-      syncLabel: isEditableCustomLabelIconKey(initialIconKey) && !item?.label
+      syncLabel: !item?.label
     });
     row.dataset.generatedId = idInput.value.trim();
 
@@ -497,21 +398,15 @@ export const createSocialLinks = ({
 
   return {
     defaultCustomSocialIconKey,
-    getPresetRows,
     getCustomRows,
-    getPresetFieldTarget,
     getCustomFieldTarget,
     getCustomVisibilityTarget,
     getCustomRowLabelInput,
-    getPresetRowHrefInput,
-    getPresetRowOrderInput,
     getStoredGeneratedCustomId,
     getStoredGeneratedCustomLabel,
     getNextSocialOrder,
-    getPresetSocialOrder,
     getCustomRowIconKey,
     normalizeCustomSocialLabel,
-    syncPresetRow,
     normalizeSocialOrders,
     syncCustomRow,
     updateCustomRowsUi,

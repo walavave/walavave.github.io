@@ -1,7 +1,4 @@
-import type {
-  SidebarNavId,
-  SiteSocialPresetId
-} from '@/lib/theme-settings';
+import type { SidebarNavId } from '@/lib/theme-settings';
 import { validateAdminThemeSettings } from '@/lib/admin-console/theme-shared';
 import { type EditableSettings } from './form-codec';
 
@@ -25,9 +22,6 @@ type ValidationContext = {
   inputSiteFooterCopyright: HTMLInputElement;
   inputSiteAdminOverviewPublicVisible: HTMLInputElement;
   inputSiteAdminOverviewHiddenMessage: HTMLInputElement;
-  inputSiteSocialGithub: HTMLInputElement;
-  inputSiteSocialX: HTMLInputElement;
-  inputSiteSocialEmail: HTMLInputElement;
   inputShellBrandTitle: HTMLInputElement;
   inputShellQuote: HTMLTextAreaElement;
   inputHomeIntroLead: HTMLTextAreaElement;
@@ -64,7 +58,6 @@ type ValidationContext = {
   inputTypographyCopy: HTMLElement;
   inputTypographyMono: HTMLElement;
   inputTypographyBrand: HTMLElement;
-  getPresetFieldTarget: (id: SiteSocialPresetId, field: 'order' | 'href') => () => HTMLElement | null;
   getCustomFieldTarget: (
     index: number,
     field: 'order' | 'iconKey' | 'id' | 'label' | 'href'
@@ -94,9 +87,6 @@ export const createValidation = ({
   inputSiteFooterCopyright,
   inputSiteAdminOverviewPublicVisible,
   inputSiteAdminOverviewHiddenMessage,
-  inputSiteSocialGithub,
-  inputSiteSocialX,
-  inputSiteSocialEmail,
   inputShellBrandTitle,
   inputShellQuote,
   inputHomeIntroLead,
@@ -133,7 +123,6 @@ export const createValidation = ({
   inputTypographyCopy,
   inputTypographyMono,
   inputTypographyBrand,
-  getPresetFieldTarget,
   getCustomFieldTarget,
   getCustomVisibilityTarget,
   getNavFieldTarget,
@@ -201,12 +190,6 @@ export const createValidation = ({
         return () => inputSiteAdminOverviewPublicVisible;
       case 'site.adminOverview.hiddenMessage':
         return () => inputSiteAdminOverviewHiddenMessage;
-      case 'site.socialLinks.github':
-        return () => inputSiteSocialGithub;
-      case 'site.socialLinks.x':
-        return () => inputSiteSocialX;
-      case 'site.socialLinks.email':
-        return () => inputSiteSocialEmail;
       case 'site.socialLinks.custom':
         return () => socialCustomAddBtn;
       case 'shell.brandTitle':
@@ -265,11 +248,6 @@ export const createValidation = ({
         return () => getTypographyFocusTarget(inputTypographyBrand);
       default:
         break;
-    }
-
-    if (path.startsWith('site.socialLinks.presetOrder.')) {
-      const presetId = path.slice('site.socialLinks.presetOrder.'.length) as SiteSocialPresetId;
-      return getPresetFieldTarget(presetId, 'order');
     }
 
     const customMatch = path.match(CUSTOM_ITEM_PATH_RE);
