@@ -1,9 +1,11 @@
 import GithubSlugger from 'github-slugger';
+import { MARKDOWN_MATH_STYLESHEET_HREF } from '../lib/markdown-math-styles';
 
 type TocHeading = {
   depth: number;
   id: string;
   text: string;
+  element: HTMLHeadingElement;
 };
 
 const COMPONENT_NAME = 'article-toc';
@@ -20,6 +22,15 @@ const styles = `
   a:hover, a:focus-visible { color: var(--accent); }
 `;
 
+export const appendHeadingContent = (link: HTMLAnchorElement, heading: HTMLHeadingElement) => {
+  const content = heading.cloneNode(true) as HTMLHeadingElement;
+
+  // A TOC entry is already a link, so preserve linked labels without nesting anchors.
+  content.querySelectorAll('a').forEach((anchor) => anchor.replaceWith(...anchor.childNodes));
+  content.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+  link.append(...content.childNodes);
+};
+
 const getHeadings = (root: Element): TocHeading[] => {
   const slugger = new GithubSlugger();
   return Array.from(root.querySelectorAll<HTMLHeadingElement>('h2, h3, h4, h5, h6'))
@@ -27,7 +38,7 @@ const getHeadings = (root: Element): TocHeading[] => {
       const text = element.textContent?.trim() ?? '';
       if (text && !element.id) element.id = slugger.slug(text);
       else if (text) slugger.slug(text);
-      return { depth: Number(element.tagName.slice(1)), id: element.id, text };
+      return { depth: Number(element.tagName.slice(1)), id: element.id, text, element };
     })
     .filter((heading) => heading.text && heading.id);
 };
@@ -48,7 +59,7 @@ const createList = (headings: TocHeading[]) => {
     const item = document.createElement('li');
     const link = document.createElement('a');
     link.href = `#${encodeURIComponent(heading.id)}`;
-    link.textContent = heading.text;
+    appendHeadingContent(link, heading.element);
     item.append(link);
     current.list.append(item);
     current.lastItem = item;
@@ -74,6 +85,12 @@ class ArticleToc extends HTMLElement {
 
     const shadow = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     shadow.replaceChildren();
+    if (headings.some(({ element }) => element.querySelector('.katex'))) {
+      const katexStylesheet = document.createElement('link');
+      katexStylesheet.rel = 'stylesheet';
+      katexStylesheet.href = MARKDOWN_MATH_STYLESHEET_HREF;
+      shadow.append(katexStylesheet);
+    }
     const style = document.createElement('style');
     style.textContent = styles;
     const details = document.createElement('details');
