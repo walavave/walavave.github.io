@@ -111,7 +111,8 @@ const isInsideProject = (filePath: string): boolean => {
 
 const hasUrlScheme = (value: string): boolean => /^[a-z][a-z\d+.-]*:/i.test(value);
 
-const toViteFsUrl = (filePath: string): string => `/@fs${pathToFileURL(filePath).pathname}`;
+const toViteFsUrl = (filePath: string): string =>
+  `/@fs${pathToFileURL(filePath).pathname}`;
 
 const getPreviewLocalImageSrc = (sourceFilePath: string, value: string): string | null => {
   const trimmed = value.trim();

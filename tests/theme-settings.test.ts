@@ -56,7 +56,17 @@ describe('theme-settings revision semantics', () => {
     expect('resolvedSocialItems' in payload.settings.site.socialLinks).toBe(false);
   });
 
-  it('keeps every social platform in the editable site.json list', () => {
+  it('keeps every social platform in the editable site.json list', async () => {
+    const settingsDir = await createTempSettingsFixture();
+    const sitePath = path.join(settingsDir, 'site.json');
+    const siteJson = JSON.parse(await readFile(sitePath, 'utf8')) as {
+      socialLinks: { custom: Array<{ id: string; visible: boolean }> };
+    };
+    const xItem = siteJson.socialLinks.custom.find((item) => item.id === 'x');
+    expect(xItem).toBeDefined();
+    xItem!.visible = false;
+    await writeFile(sitePath, `${JSON.stringify(siteJson, null, 2)}\n`, 'utf8');
+
     const socialLinks = getEditableThemeSettingsPayload().settings.site.socialLinks;
     const ids = socialLinks.custom.map((item) => item.id);
 
