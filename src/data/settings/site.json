@@ -17,9 +17,9 @@
     "appleTouchIcon": null
   },
   "socialLinks": {
-    "github": "https://github.com/walavave",
-    "x": "https://x.com/walavave",
-    "email": "walavave@gmail.com",
+    "github": null,
+    "x": null,
+    "email": null,
     "presetOrder": {
       "github": 1,
       "x": 2,
@@ -27,12 +27,28 @@
     },
     "custom": [
       {
+        "id": "github",
+        "label": "GitHub",
+        "href": "https://github.com/walavave",
+        "iconKey": "github",
+        "visible": true,
+        "order": 1
+      },
+      {
+        "id": "email",
+        "label": "Email",
+        "href": "mailto:walavave@gmail.com",
+        "iconKey": "email",
+        "visible": true,
+        "order": 2
+      },
+      {
         "id": "custom-zhihu",
         "label": "知乎",
         "href": "https://zhihu.com/people/walavave",
         "iconKey": "zhihu",
         "visible": true,
-        "order": 4
+        "order": 3
       },
       {
         "id": "custom-wechat",
@@ -40,7 +56,7 @@
         "href": "author/qrcode.jpg",
         "iconKey": "wechat",
         "visible": true,
-        "order": 5
+        "order": 4
       },
       {
         "id": "custom-xiaohongshu",
@@ -48,7 +64,7 @@
         "href": "https://xhslink.cn/m/5Gw8j7gZ3Sz",
         "iconKey": "xiaohongshu",
         "visible": true,
-        "order": 6
+        "order": 5
       },
       {
         "id": "x",
@@ -56,7 +72,7 @@
         "href": "https://x.com/walavave",
         "iconKey": "x",
         "visible": true,
-        "order": 7
+        "order": 6
       }
     ]
   }

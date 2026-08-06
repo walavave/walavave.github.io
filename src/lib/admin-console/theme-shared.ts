@@ -797,13 +797,11 @@ export const validateAdminThemeSettings = (
 
   const presetOrder = settings.site.socialLinks.presetOrder;
   const customLinks = Array.isArray(settings.site.socialLinks?.custom) ? settings.site.socialLinks.custom : [];
-  const socialOrderIssues = getAdminSocialOrderIssues(
-    presetOrder,
-    customLinks.map((item, index) => ({
-      key: String(index),
-      order: item.order
-    }))
-  );
+  const hasPresetSocialLinks = Boolean(settings.site.socialLinks?.github || settings.site.socialLinks?.x || settings.site.socialLinks?.email);
+  const customOrderInputs = customLinks.map((item, index) => ({ key: String(index), order: item.order }));
+  const socialOrderIssues = hasPresetSocialLinks
+    ? getAdminSocialOrderIssues(presetOrder, customOrderInputs)
+    : getAdminSocialOrderIssues(customOrderInputs);
   const presetOrderIssues = new Map<SiteSocialPresetId, 'range' | 'duplicate'>();
   const customOrderIssues = new Map<number, 'range' | 'duplicate'>();
 

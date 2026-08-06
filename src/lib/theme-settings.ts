@@ -1472,14 +1472,15 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
   );
 
   const normalizedNav = normalizeSidebarNavItems(nav.value);
-  const normalizedSocialOrderState = normalizeSocialOrderState(
-    {
-      github: socialLinksGithubOrder.value,
-      x: socialLinksXOrder.value,
-      email: socialLinksEmailOrder.value
-    },
-    socialLinksCustom.value
-  );
+  const presetOrderValue = {
+    github: socialLinksGithubOrder.value,
+    x: socialLinksXOrder.value,
+    email: socialLinksEmailOrder.value
+  };
+  const hasPresetSocialLinks = Boolean(socialLinksGithub.value || socialLinksX.value || socialLinksEmail.value);
+  const normalizedSocialOrderState = hasPresetSocialLinks
+    ? normalizeSocialOrderState(presetOrderValue, socialLinksCustom.value)
+    : { presetOrder: presetOrderValue, customItems: cloneSocialCustomItems(socialLinksCustom.value) };
   const customSocialItems = cloneSocialCustomItems(normalizedSocialOrderState.customItems);
   const presetSocialOrder = clonePresetSocialOrder(normalizedSocialOrderState.presetOrder);
   const resolvedSocialItems = buildResolvedSocialItems(
