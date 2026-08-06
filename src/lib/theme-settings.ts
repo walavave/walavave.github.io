@@ -5,10 +5,13 @@ import { site as legacySite } from '../../site.config.mjs';
 import { asThemeFontIdForRole, type ThemeFontId } from './fonts/registry';
 import {
   getHeroImageLocalFilePath,
+  getSiteFaviconLocalFilePath,
+  getSiteFaviconSizesFromPath,
   normalizeBitsAvatarPath,
-  normalizeHeroImageSrc
+  normalizeHeroImageSrc,
+  normalizeSiteFaviconPath,
+  type SiteFaviconSlot
 } from '../utils/format';
-import { normalizeContentImageSource } from '../utils/image-source';
 import {
   ADMIN_ARTICLE_META_DATE_LABEL_DEFAULT,
   ADMIN_ARTICLE_META_DATE_LABEL_MAX_LENGTH,
@@ -25,13 +28,10 @@ import {
   ADMIN_NAV_ORNAMENT_MAX_LENGTH,
   ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT,
   ADMIN_OVERVIEW_HIDDEN_MESSAGE_MAX_LENGTH,
-  ADMIN_SEARCH_SUBRESULT_LIMIT_DEFAULT,
-  ADMIN_SEARCH_SUBRESULT_LIMIT_MAX,
-  ADMIN_SEARCH_SUBRESULT_LIMIT_MIN,
   ADMIN_HERO_PRESET_SET,
-  ADMIN_SOCIAL_CUSTOM_LIMIT,
   ADMIN_SOCIAL_ORDER_MAX,
   ADMIN_SOCIAL_ORDER_MIN,
+  ADMIN_SOCIAL_PRESET_IDS,
   canonicalizeAdminThemeSettings,
   createAdminWritableThemeSettingsGroups,
   fillAdminThemeSettingsGroupCompatibilityDefaults,
@@ -58,6 +58,8 @@ export type SidebarDividerVariant = 'default' | 'subtle' | 'none';
 export type { ThemeFontId } from './fonts/registry';
 export type TypographyRole = 'readable' | 'copy' | 'mono' | 'brand';
 export type HomeIntroLinkKey = 'archive' | 'essay' | 'bits' | 'memo' | 'about' | 'tag';
+export type SiteSocialPresetId = 'github' | 'x' | 'email';
+export type SiteSocialKind = 'preset' | 'custom';
 export type SiteSocialIconKey =
   | 'github'
   | 'x'
@@ -98,16 +100,27 @@ export interface SiteSocialCustomItem {
   order: number;
 }
 
+export interface SiteSocialPresetOrder {
+  github: number;
+  x: number;
+  email: number;
+}
+
 export interface ResolvedSocialItem {
   id: string;
   label: string;
   href: string;
   iconKey: SiteSocialIconKey;
+  kind: SiteSocialKind;
   visible: boolean;
   order: number;
 }
 
 export interface SiteSocialLinks {
+  github: string | null;
+  x: string | null;
+  email: string | null;
+  presetOrder: SiteSocialPresetOrder;
   custom: SiteSocialCustomItem[];
   resolvedSocialItems: ResolvedSocialItem[];
 }
@@ -117,12 +130,28 @@ export interface SiteAdminOverviewSettings {
   hiddenMessage: string;
 }
 
+export type { SiteFaviconSlot } from '../utils/format';
+
+export interface SiteFaviconSettings {
+  svg: string | null;
+  png: string | null;
+  appleTouchIcon: string | null;
+}
+
+export interface SiteFaviconLink {
+  rel: 'icon' | 'apple-touch-icon';
+  href: string;
+  type?: string;
+  sizes?: string;
+}
+
 export interface SiteSettings {
   title: string;
   description: string;
   defaultLocale: string;
   footer: SiteFooterSettings;
   adminOverview: SiteAdminOverviewSettings;
+  favicon: SiteFaviconSettings;
   socialLinks: SiteSocialLinks;
 }
 
@@ -146,10 +175,7 @@ export interface HomeSettings {
 export interface PageHeadingSettings {
   title: string | null;
   subtitle: string | null;
-}
-
-export interface EssayPageSettings extends PageHeadingSettings {
-  searchSubresultLimit: number;
+  searchSubresultLimit?: number;
 }
 
 export interface MemoPageSettings extends PageHeadingSettings {}
@@ -164,7 +190,7 @@ export interface BitsPageSettings extends PageHeadingSettings {
 }
 
 export interface PageSettings {
-  essay: EssayPageSettings;
+  essay: PageHeadingSettings;
   archive: PageHeadingSettings;
   bits: BitsPageSettings;
   memo: MemoPageSettings;
@@ -227,6 +253,15 @@ export interface ThemeSettingsSources {
     footerCopyright: SettingSource;
     adminOverviewPublicVisible: SettingSource;
     adminOverviewHiddenMessage: SettingSource;
+    faviconSvg: SettingSource;
+    faviconPng: SettingSource;
+    faviconAppleTouchIcon: SettingSource;
+    socialLinksGithub: SettingSource;
+    socialLinksX: SettingSource;
+    socialLinksEmail: SettingSource;
+    socialLinksGithubOrder: SettingSource;
+    socialLinksXOrder: SettingSource;
+    socialLinksEmailOrder: SettingSource;
     socialLinksCustom: SettingSource;
   };
   shell: {
@@ -247,7 +282,6 @@ export interface ThemeSettingsSources {
   page: {
     essayTitle: SettingSource;
     essaySubtitle: SettingSource;
-    essaySearchSubresultLimit: SettingSource;
     archiveTitle: SettingSource;
     archiveSubtitle: SettingSource;
     bitsTitle: SettingSource;
@@ -290,6 +324,10 @@ export interface ThemeSettingsResolved {
 }
 
 export interface EditableSiteSocialLinks {
+  github: string | null;
+  x: string | null;
+  email: string | null;
+  presetOrder: SiteSocialPresetOrder;
   custom: SiteSocialCustomItem[];
 }
 
@@ -380,33 +418,17 @@ const LEGACY_QUOTE = 'A minimal Astro theme\nfor essays, notes, and docs.\nDesig
 const LEGACY_FOOTER_START_YEAR = 2025;
 const LEGACY_FOOTER_SHOW_CURRENT_YEAR = true;
 const LEGACY_FOOTER_COPYRIGHT = 'Whono · Theme Demo · by cxro';
+const DEFAULT_PRESET_SOCIAL_ORDER: SiteSocialPresetOrder = {
+  github: 1,
+  x: 2,
+  email: 3
+};
 const LEGACY_SOCIAL_LINKS: SiteSocialLinks = {
-  custom: [
-    {
-      id: 'github',
-      label: 'GitHub',
-      href: 'https://github.com/cxro/astro-whono',
-      iconKey: 'github',
-      visible: true,
-      order: 1
-    },
-    {
-      id: 'x',
-      label: 'X',
-      href: 'https://twitter.com/yourname',
-      iconKey: 'x',
-      visible: true,
-      order: 2
-    },
-    {
-      id: 'email',
-      label: 'Email',
-      href: 'mailto:Whono@linux.do',
-      iconKey: 'email',
-      visible: true,
-      order: 3
-    }
-  ],
+  github: 'https://github.com/cxro/astro-whono',
+  x: 'https://twitter.com/yourname',
+  email: 'Whono@linux.do',
+  presetOrder: { ...DEFAULT_PRESET_SOCIAL_ORDER },
+  custom: [],
   resolvedSocialItems: []
 };
 const LEGACY_NAV: SidebarNavItem[] = [
@@ -423,6 +445,10 @@ const cloneNavItems = (items: readonly SidebarNavItem[]): SidebarNavItem[] =>
 
 const cloneSocialCustomItems = (items: readonly SiteSocialCustomItem[]): SiteSocialCustomItem[] =>
   items.map((item) => ({ ...item }));
+
+const clonePresetSocialOrder = (value: Readonly<SiteSocialPresetOrder>): SiteSocialPresetOrder => ({
+  ...value
+});
 
 const cloneResolvedSocialItems = (items: readonly ResolvedSocialItem[]): ResolvedSocialItem[] =>
   items.map((item) => ({ ...item }));
@@ -454,7 +480,16 @@ const DEFAULT_SITE: SiteSettings = {
     publicVisible: true,
     hiddenMessage: ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT
   },
+  favicon: {
+    svg: null,
+    png: null,
+    appleTouchIcon: null
+  },
   socialLinks: {
+    github: null,
+    x: null,
+    email: null,
+    presetOrder: clonePresetSocialOrder(DEFAULT_PRESET_SOCIAL_ORDER),
     custom: [],
     resolvedSocialItems: []
   }
@@ -480,8 +515,7 @@ const DEFAULT_HOME: HomeSettings = {
 const DEFAULT_PAGE: PageSettings = {
   essay: {
     title: LEGACY_ESSAY_TITLE,
-    subtitle: LEGACY_ESSAY_SUBTITLE,
-    searchSubresultLimit: ADMIN_SEARCH_SUBRESULT_LIMIT_DEFAULT
+    subtitle: LEGACY_ESSAY_SUBTITLE
   },
   archive: {
     title: LEGACY_ARCHIVE_TITLE,
@@ -534,6 +568,18 @@ const DEFAULT_UI: UiSettings = {
 
 const NAV_IDS: ReadonlySet<SidebarNavId> = new Set(['essay', 'bits', 'memo', 'archive', 'about']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GITHUB_HOSTS = ['github.com'];
+const X_HOSTS = ['x.com', 'twitter.com'];
+const SOCIAL_CUSTOM_LIMIT = 8;
+const PRESET_SOCIAL_ITEMS: readonly {
+  id: SiteSocialPresetId;
+  label: string;
+  iconKey: SiteSocialIconKey;
+}[] = [
+  { id: 'github', label: 'GitHub', iconKey: 'github' },
+  { id: 'x', label: 'X', iconKey: 'x' },
+  { id: 'email', label: 'Email', iconKey: 'email' }
+];
 
 const SIDEBAR_HREFS: Record<SidebarNavId, string> = {
   essay: '/essay/',
@@ -678,6 +724,11 @@ const asHeroImageSrc = (value: unknown): string | null | undefined => {
 
   return existsSync(join(process.cwd(), ...localFilePath.split('/'))) ? normalized : undefined;
 };
+
+// 只做格式校验；文件是否存在交给保存期校验（阻断新的坏引用）与渲染期回退——
+// 手改 JSON / 切分支导致的文件缺失不应把后台锁进 invalid-settings。
+const asSiteFaviconPath = (slot: SiteFaviconSlot, value: unknown): string | null | undefined =>
+  normalizeSiteFaviconPath(slot, value);
 
 const asBitsAvatarPath = (value: unknown): string | undefined => {
   return normalizeBitsAvatarPath(value);
@@ -920,29 +971,54 @@ const normalizeSidebarNavItems = (items: readonly SidebarNavItem[]): SidebarNavI
 };
 
 const normalizeSocialOrderState = (
+  presetOrder: Readonly<SiteSocialPresetOrder>,
   customItems: readonly SiteSocialCustomItem[]
-): SiteSocialCustomItem[] => {
+): { presetOrder: SiteSocialPresetOrder; customItems: SiteSocialCustomItem[] } => {
+  const nextPresetOrder = clonePresetSocialOrder(presetOrder);
   const nextCustomItems = cloneSocialCustomItems(customItems);
   const hasOrderIssues = getAdminSocialOrderIssues(
-    nextCustomItems.map((item, index) => ({ key: String(index), order: item.order }))
+    nextPresetOrder,
+    nextCustomItems.map((item, index) => ({
+      key: String(index),
+      order: item.order
+    }))
   ).length > 0;
 
-  if (!hasOrderIssues) return nextCustomItems;
+  if (!hasOrderIssues) {
+    return {
+      presetOrder: nextPresetOrder,
+      customItems: nextCustomItems
+    };
+  }
 
   const usedOrders = new Set<number>();
 
-  nextCustomItems.forEach((item, index) => {
-    item.order = claimAvailableOrder(
+  ADMIN_SOCIAL_PRESET_IDS.forEach((id) => {
+    nextPresetOrder[id] = claimAvailableOrder(
       usedOrders,
-      item.order,
-      index + 1,
+      nextPresetOrder[id],
+      DEFAULT_PRESET_SOCIAL_ORDER[id],
       isAdminSocialOrderValue,
       ADMIN_SOCIAL_ORDER_MIN,
       ADMIN_SOCIAL_ORDER_MAX
     );
   });
 
-  return nextCustomItems;
+  nextCustomItems.forEach((item, index) => {
+    item.order = claimAvailableOrder(
+      usedOrders,
+      item.order,
+      PRESET_SOCIAL_ITEMS.length + index + 1,
+      isAdminSocialOrderValue,
+      ADMIN_SOCIAL_ORDER_MIN,
+      ADMIN_SOCIAL_ORDER_MAX
+    );
+  });
+
+  return {
+    presetOrder: nextPresetOrder,
+    customItems: nextCustomItems
+  };
 };
 
 const parseSidebarNav = (value: unknown): SidebarNavItem[] | undefined => {
@@ -980,18 +1056,6 @@ const parseSidebarNav = (value: unknown): SidebarNavItem[] | undefined => {
   return Array.from(merged.values()).sort((a, b) => a.order - b.order);
 };
 
-const parseSocialHref = (value: unknown, iconKey: SiteSocialIconKey): string | undefined => {
-  if (iconKey === 'wechat') {
-    return typeof value === 'string' ? normalizeContentImageSource(value) ?? undefined : undefined;
-  }
-  if (iconKey === 'email') {
-    if (typeof value !== 'string') return undefined;
-    const email = asEmailAddress(value.replace(/^mailto:/i, ''));
-    return email ? `mailto:${email}` : undefined;
-  }
-  return asHttpsUrl(value) ?? undefined;
-};
-
 const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefined => {
   if (!Array.isArray(value)) return undefined;
 
@@ -1002,10 +1066,8 @@ const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefi
     if (!isRecord(row)) continue;
 
     const label = asNonEmptyString(row.label);
-    const iconKey = asSocialIconKey(row.iconKey) ?? 'website';
-    const visible = asBoolean(row.visible) ?? true;
-    const href = parseSocialHref(row.href, iconKey);
-    if (!label || (!href && visible)) continue;
+    const href = asHttpsUrl(row.href);
+    if (!label || !href) continue;
 
     const baseId = asNonEmptyString(row.id) ?? `custom-${index + 1}`;
     let id = baseId;
@@ -1020,60 +1082,16 @@ const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefi
     normalized.push({
       id,
       label,
-      href: href ?? '',
-      iconKey,
-      visible,
+      href,
+      iconKey: asSocialIconKey(row.iconKey) ?? 'website',
+      visible: asBoolean(row.visible) ?? true,
       order: rawOrder !== undefined && isAdminSocialOrderValue(rawOrder) ? rawOrder : index + 1
     });
 
-    if (normalized.length >= ADMIN_SOCIAL_CUSTOM_LIMIT) break;
+    if (normalized.length >= SOCIAL_CUSTOM_LIMIT) break;
   }
 
   return normalized;
-};
-
-const parseLegacySocialItems = (
-  socialLinks: Record<string, unknown>,
-  customItems: readonly SiteSocialCustomItem[]
-): SiteSocialCustomItem[] => {
-  const presetOrder = isRecord(socialLinks.presetOrder) ? socialLinks.presetOrder : {};
-  const presets: SiteSocialCustomItem[] = [];
-  const github = asHttpsUrl(socialLinks.github, ['github.com']);
-  const x = asHttpsUrl(socialLinks.x, ['x.com', 'twitter.com']);
-  const email = asEmailAddress(socialLinks.email);
-
-  if (github) {
-    presets.push({
-      id: 'github',
-      label: 'GitHub',
-      href: github,
-      iconKey: 'github',
-      visible: true,
-      order: asPresetSocialOrderValue(presetOrder.github) ?? 1
-    });
-  }
-  if (x) {
-    presets.push({
-      id: 'x',
-      label: 'X',
-      href: x,
-      iconKey: 'x',
-      visible: true,
-      order: asPresetSocialOrderValue(presetOrder.x) ?? 2
-    });
-  }
-  if (email) {
-    presets.push({
-      id: 'email',
-      label: 'Email',
-      href: `mailto:${email}`,
-      iconKey: 'email',
-      visible: true,
-      order: asPresetSocialOrderValue(presetOrder.email) ?? 3
-    });
-  }
-
-  return [...presets, ...customItems];
 };
 
 const parseHomeIntroLinks = (value: unknown): HomeIntroLinkKey[] | undefined => {
@@ -1094,13 +1112,44 @@ const parseHomeIntroLinks = (value: unknown): HomeIntroLinkKey[] | undefined => 
   return normalized.length ? normalized : undefined;
 };
 
-const buildResolvedSocialItems = (customItems: readonly SiteSocialCustomItem[]): ResolvedSocialItem[] =>
-  customItems.map((item, index) => ({
+const buildResolvedSocialItems = (
+  socialLinks: Pick<SiteSocialLinks, 'github' | 'x' | 'email' | 'presetOrder'>,
+  customItems: readonly SiteSocialCustomItem[]
+): ResolvedSocialItem[] => {
+  const presetItems = PRESET_SOCIAL_ITEMS.flatMap((item, index) => {
+    const href =
+      item.id === 'email'
+        ? socialLinks.email
+          ? `mailto:${socialLinks.email}`
+          : null
+        : socialLinks[item.id];
+
+    if (!href) return [];
+
+    return [
+      {
+        id: item.id,
+        label: item.label,
+        href,
+        iconKey: item.iconKey,
+        kind: 'preset' as const,
+        visible: true,
+        order: socialLinks.presetOrder[item.id],
+        sortIndex: index
+      }
+    ];
+  });
+
+  const customResolved = customItems.map((item, index) => ({
     ...item,
-    sortIndex: index
-  }))
+    kind: 'custom' as const,
+    sortIndex: PRESET_SOCIAL_ITEMS.length + index
+  }));
+
+  return [...presetItems, ...customResolved]
     .sort((a, b) => a.order - b.order || a.sortIndex - b.sortIndex)
     .map(({ sortIndex: _sortIndex, ...item }) => item);
+};
 
 export const getThemeSettings = (): ThemeSettingsResolved => {
   if (shouldCacheThemeSettings && cachedSettings) return cachedSettings;
@@ -1113,7 +1162,9 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
 
   const siteFooterJson = isRecord(siteJson?.footer) ? siteJson.footer : undefined;
   const siteAdminOverviewJson = isRecord(siteJson?.adminOverview) ? siteJson.adminOverview : undefined;
+  const siteFaviconJson = isRecord(siteJson?.favicon) ? siteJson.favicon : undefined;
   const siteSocialLinksJson = isRecord(siteJson?.socialLinks) ? siteJson.socialLinks : undefined;
+  const siteSocialPresetOrderJson = isRecord(siteSocialLinksJson?.presetOrder) ? siteSocialLinksJson.presetOrder : undefined;
   const pageEssayJson = isRecord(pageJson?.essay) ? pageJson.essay : undefined;
   const pageArchiveJson = isRecord(pageJson?.archive) ? pageJson.archive : undefined;
   const pageBitsJson = isRecord(pageJson?.bits) ? pageJson.bits : undefined;
@@ -1161,18 +1212,54 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
     undefined,
     DEFAULT_SITE.adminOverview.hiddenMessage
   );
-  const parsedSocialItems = parseSocialCustomItems(siteSocialLinksJson?.custom);
-  const hasLegacySocialFields = Boolean(siteSocialLinksJson && (
-    Object.hasOwn(siteSocialLinksJson, 'github')
-    || Object.hasOwn(siteSocialLinksJson, 'x')
-    || Object.hasOwn(siteSocialLinksJson, 'email')
-    || Object.hasOwn(siteSocialLinksJson, 'presetOrder')
-  ));
+  const faviconSvg = resolveValue<string | null>(
+    asSiteFaviconPath('svg', siteFaviconJson?.svg),
+    undefined,
+    DEFAULT_SITE.favicon.svg
+  );
+  const faviconPng = resolveValue<string | null>(
+    asSiteFaviconPath('png', siteFaviconJson?.png),
+    undefined,
+    DEFAULT_SITE.favicon.png
+  );
+  const faviconAppleTouchIcon = resolveValue<string | null>(
+    asSiteFaviconPath('appleTouchIcon', siteFaviconJson?.appleTouchIcon),
+    undefined,
+    DEFAULT_SITE.favicon.appleTouchIcon
+  );
+  const socialLinksGithub = resolveValue(
+    asHttpsUrl(siteSocialLinksJson?.github, GITHUB_HOSTS),
+    LEGACY_SOCIAL_LINKS.github,
+    DEFAULT_SITE.socialLinks.github
+  );
+  const socialLinksX = resolveValue(
+    asHttpsUrl(siteSocialLinksJson?.x, X_HOSTS),
+    LEGACY_SOCIAL_LINKS.x,
+    DEFAULT_SITE.socialLinks.x
+  );
+  const socialLinksEmail = resolveValue(
+    asEmailAddress(siteSocialLinksJson?.email),
+    LEGACY_SOCIAL_LINKS.email,
+    DEFAULT_SITE.socialLinks.email
+  );
+  const socialLinksGithubOrder = resolveValue(
+    asPresetSocialOrderValue(siteSocialPresetOrderJson?.github),
+    LEGACY_SOCIAL_LINKS.presetOrder.github,
+    DEFAULT_SITE.socialLinks.presetOrder.github
+  );
+  const socialLinksXOrder = resolveValue(
+    asPresetSocialOrderValue(siteSocialPresetOrderJson?.x),
+    LEGACY_SOCIAL_LINKS.presetOrder.x,
+    DEFAULT_SITE.socialLinks.presetOrder.x
+  );
+  const socialLinksEmailOrder = resolveValue(
+    asPresetSocialOrderValue(siteSocialPresetOrderJson?.email),
+    LEGACY_SOCIAL_LINKS.presetOrder.email,
+    DEFAULT_SITE.socialLinks.presetOrder.email
+  );
   const socialLinksCustom = resolveValue(
-    hasLegacySocialFields && siteSocialLinksJson
-      ? parseLegacySocialItems(siteSocialLinksJson, parsedSocialItems ?? [])
-      : parsedSocialItems,
-    LEGACY_SOCIAL_LINKS.custom,
+    parseSocialCustomItems(siteSocialLinksJson?.custom),
+    undefined,
     DEFAULT_SITE.socialLinks.custom
   );
 
@@ -1242,14 +1329,6 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
     asNullableString(pageEssayJson?.subtitle),
     LEGACY_ESSAY_SUBTITLE,
     DEFAULT_PAGE.essay.subtitle
-  );
-  const essaySearchSubresultLimit = resolveValue(
-    (() => {
-      const value = asInteger(pageEssayJson?.searchSubresultLimit);
-      return value !== undefined && value >= ADMIN_SEARCH_SUBRESULT_LIMIT_MIN && value <= ADMIN_SEARCH_SUBRESULT_LIMIT_MAX ? value : undefined;
-    })(),
-    undefined,
-    DEFAULT_PAGE.essay.searchSubresultLimit
   );
   const archiveTitle = resolveValue(
     asNullableString(pageArchiveJson?.title),
@@ -1386,8 +1465,25 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
   );
 
   const normalizedNav = normalizeSidebarNavItems(nav.value);
-  const customSocialItems = normalizeSocialOrderState(socialLinksCustom.value);
-  const resolvedSocialItems = buildResolvedSocialItems(customSocialItems);
+  const normalizedSocialOrderState = normalizeSocialOrderState(
+    {
+      github: socialLinksGithubOrder.value,
+      x: socialLinksXOrder.value,
+      email: socialLinksEmailOrder.value
+    },
+    socialLinksCustom.value
+  );
+  const customSocialItems = cloneSocialCustomItems(normalizedSocialOrderState.customItems);
+  const presetSocialOrder = clonePresetSocialOrder(normalizedSocialOrderState.presetOrder);
+  const resolvedSocialItems = buildResolvedSocialItems(
+    {
+      github: socialLinksGithub.value,
+      x: socialLinksX.value,
+      email: socialLinksEmail.value,
+      presetOrder: presetSocialOrder
+    },
+    customSocialItems
+  );
 
   const resolved: ThemeSettingsResolved = {
     settings: {
@@ -1404,7 +1500,16 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
           publicVisible: adminOverviewPublicVisible.value,
           hiddenMessage: adminOverviewHiddenMessage.value
         },
+        favicon: {
+          svg: faviconSvg.value,
+          png: faviconPng.value,
+          appleTouchIcon: faviconAppleTouchIcon.value
+        },
         socialLinks: {
+          github: socialLinksGithub.value,
+          x: socialLinksX.value,
+          email: socialLinksEmail.value,
+          presetOrder: clonePresetSocialOrder(presetSocialOrder),
           custom: cloneSocialCustomItems(customSocialItems),
           resolvedSocialItems: cloneResolvedSocialItems(resolvedSocialItems)
         }
@@ -1427,8 +1532,7 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
       page: {
         essay: {
           title: essayTitle.value,
-          subtitle: essaySubtitle.value,
-          searchSubresultLimit: essaySearchSubresultLimit.value
+          subtitle: essaySubtitle.value
         },
         archive: {
           title: archiveTitle.value,
@@ -1491,6 +1595,15 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
         footerCopyright: footerCopyright.source,
         adminOverviewPublicVisible: adminOverviewPublicVisible.source,
         adminOverviewHiddenMessage: adminOverviewHiddenMessage.source,
+        faviconSvg: faviconSvg.source,
+        faviconPng: faviconPng.source,
+        faviconAppleTouchIcon: faviconAppleTouchIcon.source,
+        socialLinksGithub: socialLinksGithub.source,
+        socialLinksX: socialLinksX.source,
+        socialLinksEmail: socialLinksEmail.source,
+        socialLinksGithubOrder: socialLinksGithubOrder.source,
+        socialLinksXOrder: socialLinksXOrder.source,
+        socialLinksEmailOrder: socialLinksEmailOrder.source,
         socialLinksCustom: socialLinksCustom.source
       },
       shell: {
@@ -1511,7 +1624,6 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
       page: {
         essayTitle: essayTitle.source,
         essaySubtitle: essaySubtitle.source,
-        essaySearchSubresultLimit: essaySearchSubresultLimit.source,
         archiveTitle: archiveTitle.source,
         archiveSubtitle: archiveSubtitle.source,
         bitsTitle: bitsTitle.source,
@@ -1583,7 +1695,14 @@ const buildEditableThemeSettingsSnapshot = (
       adminOverview: {
         ...resolved.settings.site.adminOverview
       },
+      favicon: {
+        ...resolved.settings.site.favicon
+      },
       socialLinks: {
+        github: resolved.settings.site.socialLinks.github,
+        x: resolved.settings.site.socialLinks.x,
+        email: resolved.settings.site.socialLinks.email,
+        presetOrder: clonePresetSocialOrder(resolved.settings.site.socialLinks.presetOrder),
         custom: cloneSocialCustomItems(resolved.settings.site.socialLinks.custom)
       }
     },
@@ -1652,6 +1771,44 @@ export const getEditableThemeSettingsState = (
 
 export const resetThemeSettingsCache = (): void => {
   cachedSettings = null;
+};
+
+// 文件缺失的槽位按主题默认回退（渲染兜底，不阻断构建、不锁后台）。抑制只发生在标签页图标组
+// （svg/png）内部：自定义后继续输出默认 SVG 会让桌面浏览器优先选中默认图标；触摸图标与其不竞争，独立回退。
+const resolveRenderableFaviconPath = (value: string | null): string | null => {
+  if (!value) return null;
+  const projectRoot = process.env.ASTRO_WHONO_INTERNAL_TEST_PROJECT_ROOT?.trim() || process.cwd();
+  return existsSync(join(projectRoot, ...getSiteFaviconLocalFilePath(value).split('/'))) ? value : null;
+};
+
+export const getSiteFaviconLinks = (favicon: SiteFaviconSettings): SiteFaviconLink[] => {
+  const svg = resolveRenderableFaviconPath(favicon.svg);
+  const png = resolveRenderableFaviconPath(favicon.png);
+  const appleTouchIcon = resolveRenderableFaviconPath(favicon.appleTouchIcon);
+
+  const links: SiteFaviconLink[] = [];
+  if (!svg && !png) {
+    links.push(
+      { rel: 'icon', type: 'image/svg+xml', sizes: 'any', href: 'favicon.svg' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: 'favicon-32x32.png' }
+    );
+  } else {
+    if (svg) {
+      links.push({ rel: 'icon', type: 'image/svg+xml', sizes: 'any', href: svg });
+    }
+    if (png) {
+      const sizes = getSiteFaviconSizesFromPath(png);
+      links.push({ rel: 'icon', type: 'image/png', ...(sizes ? { sizes } : {}), href: png });
+    }
+  }
+
+  if (appleTouchIcon) {
+    const sizes = getSiteFaviconSizesFromPath(appleTouchIcon);
+    links.push({ rel: 'apple-touch-icon', ...(sizes ? { sizes } : {}), href: appleTouchIcon });
+  } else {
+    links.push({ rel: 'apple-touch-icon', sizes: '180x180', href: 'apple-touch-icon.png' });
+  }
+  return links;
 };
 
 export const getSidebarHref = (id: SidebarNavId): string => SIDEBAR_HREFS[id];

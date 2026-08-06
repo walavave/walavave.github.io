@@ -17,6 +17,7 @@ import {
   queryAll
 } from './controls';
 import { createAdminThemeController } from './controller';
+import { createAdminFaviconUploads } from './favicon-uploads';
 import { createFormCodec } from './form-codec';
 import { createAdminThemeImageFields } from './image-fields';
 import { createSocialLinks } from './social-links';
@@ -44,7 +45,10 @@ if (!root) {
       socialCustomHead: controls.socialCustomHead,
       socialCustomCountEl: controls.socialCustomCountEl,
       socialCustomAddBtn: controls.socialCustomAddBtn,
-      socialCustomTemplate: controls.socialCustomTemplate
+      socialCustomTemplate: controls.socialCustomTemplate,
+      inputSiteSocialGithubOrder: controls.inputSiteSocialGithubOrder,
+      inputSiteSocialXOrder: controls.inputSiteSocialXOrder,
+      inputSiteSocialEmailOrder: controls.inputSiteSocialEmailOrder
     });
 
     const formCodec = createFormCodec({
@@ -57,6 +61,7 @@ if (!root) {
       normalizeCustomSocialLabel: socialLinks.normalizeCustomSocialLabel,
       replaceCustomRows: socialLinks.replaceCustomRows,
       normalizeSocialOrders: socialLinks.normalizeSocialOrders,
+      getPresetSocialOrder: socialLinks.getPresetSocialOrder,
       articleMetaPreviewValueEl: controls.articleMetaPreviewValueEl,
       footerPreviewValueEl: controls.footerPreviewValueEl,
       homeIntroMorePreviewEl: controls.homeIntroMorePreviewEl,
@@ -69,6 +74,15 @@ if (!root) {
       inputSiteFooterCopyright: controls.inputSiteFooterCopyright,
       inputSiteAdminOverviewPublicVisible: controls.inputSiteAdminOverviewPublicVisible,
       inputSiteAdminOverviewHiddenMessage: controls.inputSiteAdminOverviewHiddenMessage,
+      inputSiteFaviconSvg: controls.inputSiteFaviconSvg,
+      inputSiteFaviconPng: controls.inputSiteFaviconPng,
+      inputSiteFaviconAppleTouchIcon: controls.inputSiteFaviconAppleTouchIcon,
+      inputSiteSocialGithubOrder: controls.inputSiteSocialGithubOrder,
+      inputSiteSocialGithub: controls.inputSiteSocialGithub,
+      inputSiteSocialXOrder: controls.inputSiteSocialXOrder,
+      inputSiteSocialX: controls.inputSiteSocialX,
+      inputSiteSocialEmailOrder: controls.inputSiteSocialEmailOrder,
+      inputSiteSocialEmail: controls.inputSiteSocialEmail,
       inputShellBrandTitle: controls.inputShellBrandTitle,
       inputShellQuote: controls.inputShellQuote,
       inputHomeShowIntroLead: controls.inputHomeShowIntroLead,
@@ -80,7 +94,6 @@ if (!root) {
       inputHomeIntroMoreLinkSecondary: controls.inputHomeIntroMoreLinkSecondary,
       inputPageEssayTitle: controls.inputPageEssayTitle,
       inputPageEssaySubtitle: controls.inputPageEssaySubtitle,
-      inputPageEssaySearchSubresultLimit: controls.inputPageEssaySearchSubresultLimit,
       inputPageArchiveTitle: controls.inputPageArchiveTitle,
       inputPageArchiveSubtitle: controls.inputPageArchiveSubtitle,
       inputPageBitsTitle: controls.inputPageBitsTitle,
@@ -140,6 +153,9 @@ if (!root) {
       inputSiteFooterCopyright: controls.inputSiteFooterCopyright,
       inputSiteAdminOverviewPublicVisible: controls.inputSiteAdminOverviewPublicVisible,
       inputSiteAdminOverviewHiddenMessage: controls.inputSiteAdminOverviewHiddenMessage,
+      inputSiteSocialGithub: controls.inputSiteSocialGithub,
+      inputSiteSocialX: controls.inputSiteSocialX,
+      inputSiteSocialEmail: controls.inputSiteSocialEmail,
       inputShellBrandTitle: controls.inputShellBrandTitle,
       inputShellQuote: controls.inputShellQuote,
       inputHomeIntroLead: controls.inputHomeIntroLead,
@@ -156,7 +172,6 @@ if (!root) {
       inputPageMemoTitle: controls.inputPageMemoTitle,
       inputPageAboutTitle: controls.inputPageAboutTitle,
       inputPageEssaySubtitle: controls.inputPageEssaySubtitle,
-      inputPageEssaySearchSubresultLimit: controls.inputPageEssaySearchSubresultLimit,
       inputPageArchiveSubtitle: controls.inputPageArchiveSubtitle,
       inputPageBitsSubtitle: controls.inputPageBitsSubtitle,
       inputPageMemoSubtitle: controls.inputPageMemoSubtitle,
@@ -176,6 +191,7 @@ if (!root) {
       inputTypographyCopy: controls.inputTypographyCopy,
       inputTypographyMono: controls.inputTypographyMono,
       inputTypographyBrand: controls.inputTypographyBrand,
+      getPresetFieldTarget: socialLinks.getPresetFieldTarget,
       getCustomFieldTarget: socialLinks.getCustomFieldTarget,
       getCustomVisibilityTarget: socialLinks.getCustomVisibilityTarget,
       getNavFieldTarget,
@@ -201,6 +217,14 @@ if (!root) {
     });
 
     const imagePicker = createAdminImagePicker();
+    const faviconUploads = createAdminFaviconUploads({
+      root,
+      inputs: {
+        png: controls.inputSiteFaviconPng,
+        appleTouchIcon: controls.inputSiteFaviconAppleTouchIcon
+      },
+      setStatus: uiState.setStatus
+    });
     const themeImageFields = createAdminThemeImageFields({
       root,
       picker: imagePicker,
@@ -215,7 +239,13 @@ if (!root) {
     });
 
     const finalizeAppliedSettings = (): void => {
+      socialLinks.getPresetRows().forEach((row) => {
+        delete row.dataset.stashedHref;
+        delete row.dataset.stashedOrder;
+        socialLinks.syncPresetRow(row);
+      });
       themeImageFields?.refreshAll();
+      faviconUploads.refreshAll();
     };
 
     const syncEditableDerivedControls = (): void => {

@@ -3,12 +3,13 @@ import type {
   SidebarDividerVariant,
   SidebarNavId,
   SiteSocialIconKey,
+  SiteSocialPresetId,
   ThemeFontId,
   ThemeSettingsEditablePayload,
   TypographyRole,
   TypographySettings
 } from '@/lib/theme-settings';
-import { normalizeHeroImageSrc as normalizeHeroImageSrcValue } from '@/utils/format';
+import { normalizeHeroImageSrc as normalizeHeroImageSrcValue, normalizeSiteFaviconPath, type SiteFaviconSlot } from '@/utils/format';
 import {
   ADMIN_ARTICLE_META_DATE_LABEL_DEFAULT,
   ADMIN_HERO_IMAGE_ALT_DEFAULT,
@@ -19,6 +20,7 @@ import {
   ADMIN_NAV_ORNAMENT_DEFAULT,
   ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT,
   ADMIN_SIDEBAR_DIVIDER_DEFAULT,
+  ADMIN_SOCIAL_PRESET_ORDER_DEFAULT,
   ADMIN_TYPOGRAPHY_DEFAULT,
   canonicalizeAdminThemeSettings,
   isAdminHomeIntroLinkKey,
@@ -30,6 +32,7 @@ import {
 export type EditableSettings = ThemeSettingsEditablePayload['settings'];
 export type EditableCustomSocialItem = EditableSettings['site']['socialLinks']['custom'][number];
 export type EditableNavItem = EditableSettings['shell']['nav'][number];
+export type SocialPresetOrder = Record<SiteSocialPresetId, number>;
 
 type Query = <T extends Element>(parent: ParentNode, selector: string) => T | null;
 
@@ -43,6 +46,7 @@ type FormCodecContext = {
   normalizeCustomSocialLabel: (value: unknown, iconKey: SiteSocialIconKey) => string;
   replaceCustomRows: (items: EditableCustomSocialItem[]) => void;
   normalizeSocialOrders: () => void;
+  getPresetSocialOrder: () => SocialPresetOrder;
   articleMetaPreviewValueEl: HTMLElement;
   footerPreviewValueEl: HTMLElement;
   homeIntroMorePreviewEl: HTMLElement;
@@ -55,6 +59,15 @@ type FormCodecContext = {
   inputSiteFooterCopyright: HTMLInputElement;
   inputSiteAdminOverviewPublicVisible: HTMLInputElement;
   inputSiteAdminOverviewHiddenMessage: HTMLInputElement;
+  inputSiteFaviconSvg: HTMLInputElement;
+  inputSiteFaviconPng: HTMLInputElement;
+  inputSiteFaviconAppleTouchIcon: HTMLInputElement;
+  inputSiteSocialGithubOrder: HTMLInputElement;
+  inputSiteSocialGithub: HTMLInputElement;
+  inputSiteSocialXOrder: HTMLInputElement;
+  inputSiteSocialX: HTMLInputElement;
+  inputSiteSocialEmailOrder: HTMLInputElement;
+  inputSiteSocialEmail: HTMLInputElement;
   inputShellBrandTitle: HTMLInputElement;
   inputShellQuote: HTMLTextAreaElement;
   inputHomeShowIntroLead: HTMLInputElement;
@@ -66,7 +79,6 @@ type FormCodecContext = {
   inputHomeIntroMoreLinkSecondary: HTMLSelectElement;
   inputPageEssayTitle: HTMLInputElement;
   inputPageEssaySubtitle: HTMLInputElement;
-  inputPageEssaySearchSubresultLimit: HTMLInputElement;
   inputPageArchiveTitle: HTMLInputElement;
   inputPageArchiveSubtitle: HTMLInputElement;
   inputPageBitsTitle: HTMLInputElement;
@@ -113,6 +125,8 @@ const normalizeSingleLine = (value: unknown, fallback = ''): string => {
   return normalized.includes('\n') ? fallback : normalized;
 };
 
+export const normalizeEmail = (value: string): string => value.replace(/^mailto:/i, '').trim();
+
 const parseOrder = (value: string | number | null | undefined, fallback: number): number => {
   const next = Number.parseInt(String(value ?? '').trim(), 10);
   return Number.isFinite(next) ? next : fallback;
@@ -136,6 +150,12 @@ const normalizeHeroImageAlt = (value: unknown): string => {
   return rawValue || ADMIN_HERO_IMAGE_ALT_DEFAULT;
 };
 
+const normalizeSiteFaviconInput = (slot: SiteFaviconSlot, value: unknown): string | null => {
+  const rawValue = normalizeTrimmed(value);
+  if (!rawValue) return null;
+  return normalizeSiteFaviconPath(slot, rawValue) ?? rawValue;
+};
+
 export const createFormCodec = ({
   footerStartYearMax,
   query,
@@ -146,6 +166,7 @@ export const createFormCodec = ({
   normalizeCustomSocialLabel,
   replaceCustomRows,
   normalizeSocialOrders,
+  getPresetSocialOrder,
   articleMetaPreviewValueEl,
   footerPreviewValueEl,
   homeIntroMorePreviewEl,
@@ -158,6 +179,15 @@ export const createFormCodec = ({
   inputSiteFooterCopyright,
   inputSiteAdminOverviewPublicVisible,
   inputSiteAdminOverviewHiddenMessage,
+  inputSiteFaviconSvg,
+  inputSiteFaviconPng,
+  inputSiteFaviconAppleTouchIcon,
+  inputSiteSocialGithubOrder,
+  inputSiteSocialGithub,
+  inputSiteSocialXOrder,
+  inputSiteSocialX,
+  inputSiteSocialEmailOrder,
+  inputSiteSocialEmail,
   inputShellBrandTitle,
   inputShellQuote,
   inputHomeShowIntroLead,
@@ -169,7 +199,6 @@ export const createFormCodec = ({
   inputHomeIntroMoreLinkSecondary,
   inputPageEssayTitle,
   inputPageEssaySubtitle,
-  inputPageEssaySearchSubresultLimit,
   inputPageArchiveTitle,
   inputPageArchiveSubtitle,
   inputPageBitsTitle,
@@ -461,7 +490,16 @@ export const createFormCodec = ({
             ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT
           )
         },
+        favicon: {
+          svg: normalizeSiteFaviconInput('svg', inputSiteFaviconSvg.value),
+          png: normalizeSiteFaviconInput('png', inputSiteFaviconPng.value),
+          appleTouchIcon: normalizeSiteFaviconInput('appleTouchIcon', inputSiteFaviconAppleTouchIcon.value)
+        },
         socialLinks: {
+          github: inputSiteSocialGithub.value.trim() || null,
+          x: inputSiteSocialX.value.trim() || null,
+          email: normalizeEmail(inputSiteSocialEmail.value.trim()) || null,
+          presetOrder: getPresetSocialOrder(),
           custom
         }
       },
@@ -483,8 +521,7 @@ export const createFormCodec = ({
       page: {
         essay: {
           title: normalizeOptionalSingleLine(inputPageEssayTitle.value),
-          subtitle: normalizeOptionalSingleLine(inputPageEssaySubtitle.value),
-          searchSubresultLimit: parseInteger(inputPageEssaySearchSubresultLimit.value) ?? 5
+          subtitle: normalizeOptionalSingleLine(inputPageEssaySubtitle.value)
         },
         archive: {
           title: normalizeOptionalSingleLine(inputPageArchiveTitle.value),
@@ -550,6 +587,21 @@ export const createFormCodec = ({
     inputSiteAdminOverviewHiddenMessage.value =
       settings.site.adminOverview?.hiddenMessage || ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT;
     syncAdminOverviewControls();
+    inputSiteFaviconSvg.value = settings.site.favicon?.svg || '';
+    inputSiteFaviconPng.value = settings.site.favicon?.png || '';
+    inputSiteFaviconAppleTouchIcon.value = settings.site.favicon?.appleTouchIcon || '';
+    inputSiteSocialGithubOrder.value = String(
+      settings.site.socialLinks?.presetOrder?.github ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.github
+    );
+    inputSiteSocialGithub.value = settings.site.socialLinks?.github || '';
+    inputSiteSocialXOrder.value = String(
+      settings.site.socialLinks?.presetOrder?.x ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.x
+    );
+    inputSiteSocialX.value = settings.site.socialLinks?.x || '';
+    inputSiteSocialEmailOrder.value = String(
+      settings.site.socialLinks?.presetOrder?.email ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.email
+    );
+    inputSiteSocialEmail.value = settings.site.socialLinks?.email || '';
     replaceCustomRows(settings.site.socialLinks?.custom || []);
     normalizeSocialOrders();
     inputShellBrandTitle.value = settings.shell.brandTitle || '';
@@ -568,7 +620,6 @@ export const createFormCodec = ({
     refreshHomeIntroPreview();
     inputPageEssayTitle.value = settings.page.essay?.title || '';
     inputPageEssaySubtitle.value = settings.page.essay?.subtitle || '';
-    inputPageEssaySearchSubresultLimit.value = String(settings.page.essay?.searchSubresultLimit ?? 5);
     inputPageArchiveTitle.value = settings.page.archive?.title || '';
     inputPageArchiveSubtitle.value = settings.page.archive?.subtitle || '';
     inputPageBitsTitle.value = settings.page.bits?.title || '';

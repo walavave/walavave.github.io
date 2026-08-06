@@ -6,6 +6,8 @@ import type {
   SidebarDividerVariant,
   SidebarNavId,
   SiteSocialIconKey,
+  SiteSocialPresetId,
+  SiteSocialPresetOrder,
   ThemeSettingsFileGroup,
   TypographySettings
 } from '../theme-settings';
@@ -18,21 +20,38 @@ import {
 import {
   getBitsAvatarLocalFilePath as getAdminBitsAvatarLocalFilePath,
   getHeroImageLocalFilePath as getAdminHeroImageLocalFilePath,
+  getSiteFaviconLocalFilePath as getAdminSiteFaviconLocalFilePath,
+  getSiteFaviconSizesFromPath as getAdminSiteFaviconSizesFromPath,
   normalizeBitsAvatarPath as normalizeAdminBitsAvatarPath,
-  normalizeHeroImageSrc as normalizeAdminHeroImageSrc
+  normalizeHeroImageSrc as normalizeAdminHeroImageSrc,
+  normalizeSiteFaviconPath as normalizeAdminSiteFaviconPath,
+  type SiteFaviconSlot
 } from '../../utils/format';
 import { normalizeContentImageSource } from '../../utils/image-source';
 
 export {
   getAdminBitsAvatarLocalFilePath,
   getAdminHeroImageLocalFilePath,
+  getAdminSiteFaviconLocalFilePath,
+  getAdminSiteFaviconSizesFromPath,
   normalizeAdminBitsAvatarPath,
-  normalizeAdminHeroImageSrc
+  normalizeAdminHeroImageSrc,
+  normalizeAdminSiteFaviconPath
+};
+
+export const ADMIN_SITE_FAVICON_SLOTS = ['svg', 'png', 'appleTouchIcon'] as const satisfies readonly SiteFaviconSlot[];
+export const ADMIN_SITE_FAVICON_SLOT_LABELS: Record<SiteFaviconSlot, string> = {
+  svg: '站点图标（SVG）',
+  png: '标签页图标（PNG）',
+  appleTouchIcon: '触摸图标（PNG）'
 };
 
 export const ADMIN_NAV_IDS = ['essay', 'bits', 'memo', 'archive', 'about'] as const satisfies readonly SidebarNavId[];
 export const ADMIN_PAGE_IDS = ['essay', 'archive', 'bits', 'memo', 'about'] as const satisfies readonly PageId[];
-export const ADMIN_SOCIAL_CUSTOM_LIMIT = 11;
+export const ADMIN_SEARCH_SUBRESULT_LIMIT_DEFAULT = 5;
+export const ADMIN_SEARCH_SUBRESULT_LIMIT_MIN = 1;
+export const ADMIN_SEARCH_SUBRESULT_LIMIT_MAX = 20;
+export const ADMIN_SOCIAL_CUSTOM_LIMIT = 8;
 
 export const ADMIN_HERO_PRESETS = ['default', 'none'] as const satisfies readonly HeroPresetId[];
 export const ADMIN_HERO_PRESET_SET: ReadonlySet<HeroPresetId> = new Set(ADMIN_HERO_PRESETS);
@@ -86,11 +105,18 @@ export const ADMIN_HOME_INTRO_LINK_OPTIONS = [
   href: string;
 }[];
 
+export const ADMIN_SOCIAL_PRESET_IDS = ['github', 'x', 'email'] as const satisfies readonly SiteSocialPresetId[];
+export const ADMIN_SOCIAL_PRESET_ORDER_DEFAULT: Record<SiteSocialPresetId, number> = {
+  github: 1,
+  x: 2,
+  email: 3
+};
 export const ADMIN_SOCIAL_ORDER_MIN = 1;
-export const ADMIN_SOCIAL_ORDER_MAX = ADMIN_SOCIAL_CUSTOM_LIMIT;
+export const ADMIN_SOCIAL_ORDER_MAX = ADMIN_SOCIAL_PRESET_IDS.length + ADMIN_SOCIAL_CUSTOM_LIMIT;
 export const ADMIN_NAV_ORDER_MIN = 1;
 export const ADMIN_NAV_ORDER_MAX = 999;
 
+type AdminSocialOrderScope = 'preset' | 'custom';
 type AdminSocialOrderInput = {
   key: string;
   order: number;
@@ -102,6 +128,7 @@ type AdminNavOrderInput = {
 
 export type AdminSocialOrderIssue = {
   type: 'range' | 'duplicate';
+  scope: AdminSocialOrderScope;
   key: string;
   order: number;
 };
@@ -116,9 +143,6 @@ export const ADMIN_SOCIAL_ICON_KEYS = [
   'x',
   'email',
   'weibo',
-  'zhihu',
-  'wechat',
-  'xiaohongshu',
   'facebook',
   'instagram',
   'telegram',
@@ -130,12 +154,12 @@ export const ADMIN_SOCIAL_ICON_KEYS = [
 ] as const satisfies readonly SiteSocialIconKey[];
 export const ADMIN_SOCIAL_ICON_KEY_SET: ReadonlySet<SiteSocialIconKey> = new Set(ADMIN_SOCIAL_ICON_KEYS);
 
+export const ADMIN_GITHUB_HOSTS = ['github.com'] as const;
+export const ADMIN_X_HOSTS = ['x.com', 'twitter.com'] as const;
+
 export const ADMIN_HOME_INTRO_MAX_LENGTH = 240;
 export const ADMIN_PAGE_TITLE_MAX_LENGTH = 60;
 export const ADMIN_PAGE_SUBTITLE_MAX_LENGTH = 120;
-export const ADMIN_SEARCH_SUBRESULT_LIMIT_DEFAULT = 5;
-export const ADMIN_SEARCH_SUBRESULT_LIMIT_MIN = 1;
-export const ADMIN_SEARCH_SUBRESULT_LIMIT_MAX = 20;
 export const ADMIN_NAV_ORNAMENT_DEFAULT = '·';
 export const ADMIN_NAV_ORNAMENT_MAX_LENGTH = 4;
 export const ADMIN_FOOTER_START_YEAR_MIN = 1900;
@@ -160,6 +184,9 @@ export const isAdminSidebarDividerVariant = (value: string): value is SidebarDiv
 export const isAdminHomeIntroLinkKey = (value: string): value is HomeIntroLinkKey =>
   ADMIN_HOME_INTRO_LINK_KEY_SET.has(value as HomeIntroLinkKey);
 
+export const isAdminSocialPresetId = (value: string): value is SiteSocialPresetId =>
+  (ADMIN_SOCIAL_PRESET_IDS as readonly string[]).includes(value);
+
 export const normalizeAdminSocialIconKey = (value: unknown): SiteSocialIconKey | undefined => {
   if (typeof value !== 'string') return undefined;
   const normalized = value.trim();
@@ -178,9 +205,26 @@ export const isAdminNavOrderValue = (value: number): boolean =>
   Number.isInteger(value) && value >= ADMIN_NAV_ORDER_MIN && value <= ADMIN_NAV_ORDER_MAX;
 
 export const getAdminSocialOrderIssues = (
-  customItems: readonly AdminSocialOrderInput[]
+  presetOrder: Readonly<SiteSocialPresetOrder> | readonly AdminSocialOrderInput[],
+  customItems: readonly AdminSocialOrderInput[] = []
 ): AdminSocialOrderIssue[] => {
-  const entries = customItems.map((item) => ({ key: item.key, order: item.order }));
+  const legacyItems = Array.isArray(presetOrder) ? presetOrder : null;
+  const resolvedPresetOrder: Readonly<SiteSocialPresetOrder> = legacyItems
+    ? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT
+    : presetOrder as Readonly<SiteSocialPresetOrder>;
+  const resolvedCustomItems = legacyItems ?? customItems;
+  const entries = [
+    ...ADMIN_SOCIAL_PRESET_IDS.map((id) => ({
+      scope: 'preset' as const,
+      key: id,
+      order: resolvedPresetOrder[id]
+    })),
+    ...resolvedCustomItems.map((item) => ({
+      scope: 'custom' as const,
+      key: item.key,
+      order: item.order
+    }))
+  ];
   const orderCounts = new Map<number, number>();
 
   entries.forEach((entry) => {
@@ -371,9 +415,9 @@ export const canonicalizeAdminThemeSettings = (
   const adminOverview = isRecord(site.adminOverview) ? site.adminOverview : {};
   const socialLinks = isRecord(site.socialLinks) ? site.socialLinks : {};
   const customItems = Array.isArray(socialLinks.custom) ? socialLinks.custom : [];
-  const essayPage = isRecord(page.essay) ? page.essay : {};
   const bitsPage = isRecord(page.bits) ? page.bits : {};
   const bitsDefaultAuthor = isRecord(bitsPage.defaultAuthor) ? bitsPage.defaultAuthor : {};
+  const rawPresetOrder = isRecord(socialLinks.presetOrder) ? socialLinks.presetOrder : {};
   const rawUiArticleMeta: LooseRecord = isRecord(ui.articleMeta) ? ui.articleMeta : {};
   const rawUiSidebarActions: LooseRecord = isRecord(ui.sidebarActions) ? ui.sidebarActions : {};
   const rawUiLayout: LooseRecord = isRecord(ui.layout) ? ui.layout : {};
@@ -390,15 +434,10 @@ export const canonicalizeAdminThemeSettings = (
     .map((item, index) => {
       const record = isRecord(item) ? item : {};
       const iconKey = normalizeAdminSocialIconKey(record.iconKey) ?? defaultCustomSocialIconKey;
-      const href = normalizeTrimmed(record.href);
       const sortableItem: SortableCustomItem = {
         id: normalizeTrimmed(record.id),
         label: normalizeCustomSocialLabel(record.label, iconKey),
-        href: iconKey === 'wechat'
-          ? normalizeContentImageSource(href) ?? href
-          : iconKey === 'email' && href
-            ? `mailto:${normalizeEmail(href)}`
-            : href,
+        href: normalizeTrimmed(record.href),
         iconKey,
         visible: Boolean(record.visible),
         order: parseOrder(record.order as string | number | null | undefined, index + 1),
@@ -452,6 +491,19 @@ export const canonicalizeAdminThemeSettings = (
     return normalized || ADMIN_HERO_IMAGE_ALT_DEFAULT;
   })();
 
+  const rawFavicon = isRecord(site.favicon) ? site.favicon : {};
+  const canonicalFaviconSlot = (slot: SiteFaviconSlot): string | null => {
+    const rawValue = rawFavicon[slot];
+    if (rawValue === null || rawValue === undefined) return null;
+
+    const normalized = normalizeAdminSiteFaviconPath(slot, rawValue);
+    if (normalized === undefined) {
+      const rawText = normalizeTrimmed(rawValue);
+      return rawText ? rawText : null;
+    }
+    return normalized;
+  };
+
   return {
     site: {
       title: normalizeTrimmed(site.title),
@@ -469,7 +521,26 @@ export const canonicalizeAdminThemeSettings = (
           ADMIN_OVERVIEW_HIDDEN_MESSAGE_DEFAULT
         )
       },
+      favicon: {
+        svg: canonicalFaviconSlot('svg'),
+        png: canonicalFaviconSlot('png'),
+        appleTouchIcon: canonicalFaviconSlot('appleTouchIcon')
+      },
       socialLinks: {
+        github: normalizeTrimmed(socialLinks.github) || null,
+        x: normalizeTrimmed(socialLinks.x) || null,
+        email: normalizeEmail(normalizeTrimmed(socialLinks.email)) || null,
+        presetOrder: {
+          github: parseOrder(
+            rawPresetOrder.github as string | number | null | undefined,
+            ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.github
+          ),
+          x: parseOrder(rawPresetOrder.x as string | number | null | undefined, ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.x),
+          email: parseOrder(
+            rawPresetOrder.email as string | number | null | undefined,
+            ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.email
+          )
+        },
         custom: normalizedCustom
       }
     },
@@ -490,11 +561,11 @@ export const canonicalizeAdminThemeSettings = (
     },
     page: {
       essay: {
-        title: normalizeOptionalSingleLine(String(essayPage.title ?? '')),
-        subtitle: normalizeOptionalSingleLine(String(essayPage.subtitle ?? '')),
-        searchSubresultLimit: Math.min(
-          ADMIN_SEARCH_SUBRESULT_LIMIT_MAX,
-          Math.max(ADMIN_SEARCH_SUBRESULT_LIMIT_MIN, parseInteger(essayPage.searchSubresultLimit as string | number | null | undefined) ?? ADMIN_SEARCH_SUBRESULT_LIMIT_DEFAULT)
+        title: normalizeOptionalSingleLine(String(isRecord(page.essay) ? page.essay.title ?? '' : '')),
+        subtitle: normalizeOptionalSingleLine(String(isRecord(page.essay) ? page.essay.subtitle ?? '' : '')),
+        searchSubresultLimit: parseOrder(
+          isRecord(page.essay) ? page.essay.searchSubresultLimit as string | number | null | undefined : undefined,
+          ADMIN_SEARCH_SUBRESULT_LIMIT_DEFAULT
         )
       },
       archive: {
@@ -572,7 +643,16 @@ export const createAdminWritableThemeSettingsGroups = (
     adminOverview: {
       ...settings.site.adminOverview
     },
+    favicon: {
+      ...settings.site.favicon
+    },
     socialLinks: {
+      github: settings.site.socialLinks.github,
+      x: settings.site.socialLinks.x,
+      email: settings.site.socialLinks.email,
+      presetOrder: {
+        ...settings.site.socialLinks.presetOrder
+      },
       custom: cloneCustomItems(settings.site.socialLinks.custom)
     }
   },
@@ -673,24 +753,88 @@ export const validateAdminThemeSettings = (
     );
   }
 
+  ADMIN_SITE_FAVICON_SLOTS.forEach((slot) => {
+    const slotValue = settings.site.favicon?.[slot] ?? null;
+    if (slotValue === null) return;
+
+    const slotLabel = ADMIN_SITE_FAVICON_SLOT_LABELS[slot];
+    const extHint = slot === 'svg' ? '.svg' : '.png';
+    if (normalizeAdminSiteFaviconPath(slot, slotValue) === undefined) {
+      pushIssue(
+        `site.favicon.${slot}`,
+        `${slotLabel} 只允许 public/**（或 / 开头）的 ${extHint} 路径，不允许 URL、..、?、#`
+      );
+      return;
+    }
+
+    const localFilePath = getAdminSiteFaviconLocalFilePath(slotValue);
+    if (options.localFileExists && !options.localFileExists(localFilePath)) {
+      pushIssue(`site.favicon.${slot}`, `${slotLabel} 指向的本地文件不存在：${localFilePath}`);
+    }
+  });
+
+  if (
+    settings.site.socialLinks?.github &&
+    !isAdminAllowedHttpsUrl(settings.site.socialLinks.github, ADMIN_GITHUB_HOSTS)
+  ) {
+    pushIssue('site.socialLinks.github', 'GitHub 链接只允许 https://github.com/... ');
+  }
+  if (
+    settings.site.socialLinks?.x &&
+    !isAdminAllowedHttpsUrl(settings.site.socialLinks.x, ADMIN_X_HOSTS)
+  ) {
+    pushIssue('site.socialLinks.x', 'X / Twitter 链接只允许 https://x.com/... 或 https://twitter.com/... ');
+  }
+  if (
+    settings.site.socialLinks?.email &&
+    !ADMIN_EMAIL_RE.test(normalizeEmail(settings.site.socialLinks.email))
+  ) {
+    pushIssue('site.socialLinks.email', 'Email 必须是合法邮箱地址');
+  }
+
+  const presetOrder = settings.site.socialLinks.presetOrder;
   const customLinks = Array.isArray(settings.site.socialLinks?.custom) ? settings.site.socialLinks.custom : [];
   const socialOrderIssues = getAdminSocialOrderIssues(
+    presetOrder,
     customLinks.map((item, index) => ({
       key: String(index),
       order: item.order
     }))
   );
+  const presetOrderIssues = new Map<SiteSocialPresetId, 'range' | 'duplicate'>();
   const customOrderIssues = new Map<number, 'range' | 'duplicate'>();
 
   socialOrderIssues.forEach((issue) => {
+    if (issue.scope === 'preset') {
+      if (isAdminSocialPresetId(issue.key)) {
+        presetOrderIssues.set(issue.key, issue.type);
+      }
+      return;
+    }
+
     const index = Number.parseInt(issue.key, 10);
     if (Number.isInteger(index)) {
       customOrderIssues.set(index, issue.type);
     }
   });
 
+  ADMIN_SOCIAL_PRESET_IDS.forEach((id) => {
+    const rowLabel = id === 'github' ? 'GitHub' : id === 'x' ? 'X / Twitter' : 'Email';
+    const orderIssue = presetOrderIssues.get(id);
+    if (orderIssue === 'range') {
+      pushIssue(
+        `site.socialLinks.presetOrder.${id}`,
+        `${rowLabel} 的位置排序必须为 ${ADMIN_SOCIAL_ORDER_MIN}-${ADMIN_SOCIAL_ORDER_MAX} 的整数`
+      );
+      return;
+    }
+    if (orderIssue === 'duplicate') {
+      pushIssue(`site.socialLinks.presetOrder.${id}`, `社交链接位置排序不能重复：${presetOrder[id]}`);
+    }
+  });
+
   if (customLinks.length > ADMIN_SOCIAL_CUSTOM_LIMIT) {
-    pushIssue('site.socialLinks.custom', `社交链接最多只能添加 ${ADMIN_SOCIAL_CUSTOM_LIMIT} 条`);
+    pushIssue('site.socialLinks.custom', `自定义链接最多只能添加 ${ADMIN_SOCIAL_CUSTOM_LIMIT} 条`);
   }
 
   const seenCustomIds = new Set<string>();
@@ -714,22 +858,9 @@ export const validateAdminThemeSettings = (
       pushIssue(`${basePath}.label`, `自定义链接 #${index + 1} 的显示名称只允许单行文本`);
     }
 
-    if (item.visible || item.href) {
-      if (item.iconKey === 'wechat') {
-        if (!normalizeContentImageSource(item.href)) {
-          pushIssue(
-            `${basePath}.href`,
-            `微信公众号 #${index + 1} 必须填写 public 下的相对二维码图片路径或 https:// 图片地址`
-          );
-        }
-      } else if (item.iconKey === 'email') {
-        const email = item.href.startsWith('mailto:') ? item.href.slice(7) : '';
-        if (!ADMIN_EMAIL_RE.test(normalizeEmail(email))) {
-          pushIssue(`${basePath}.href`, `Email #${index + 1} 必须填写合法的 mailto: 邮箱链接`);
-        }
-      } else if (!item.href || !isAdminAllowedHttpsUrl(item.href)) {
-        pushIssue(`${basePath}.href`, `社交链接 #${index + 1} 必须是合法 https:// 地址`);
-      }
+    const allowsLocalImage = item.iconKey === 'wechat' && normalizeContentImageSource(item.href) !== null;
+    if (!item.href || (!isAdminAllowedHttpsUrl(item.href) && !allowsLocalImage)) {
+      pushIssue(`${basePath}.href`, `自定义链接 #${index + 1} 的链接必须是合法 https:// 地址`);
     }
     if (!isAdminSocialIconKey(item.iconKey)) {
       pushIssue(`${basePath}.iconKey`, `自定义链接 #${index + 1} 的图标必须从白名单中选择`);
@@ -866,17 +997,6 @@ export const validateAdminThemeSettings = (
       pushIssue(path, `${label} 不能超过 ${ADMIN_PAGE_SUBTITLE_MAX_LENGTH} 个字符`);
     }
   });
-
-  if (
-    !Number.isInteger(settings.page.essay.searchSubresultLimit) ||
-    settings.page.essay.searchSubresultLimit < ADMIN_SEARCH_SUBRESULT_LIMIT_MIN ||
-    settings.page.essay.searchSubresultLimit > ADMIN_SEARCH_SUBRESULT_LIMIT_MAX
-  ) {
-    pushIssue(
-      'page.essay.searchSubresultLimit',
-      `搜索子结果最大数量必须是 ${ADMIN_SEARCH_SUBRESULT_LIMIT_MIN}–${ADMIN_SEARCH_SUBRESULT_LIMIT_MAX} 之间的整数`
-    );
-  }
 
   if (!settings.page.bits?.defaultAuthor?.name) {
     pushIssue('page.bits.defaultAuthor.name', 'Bits 默认作者名不能为空');
@@ -1123,27 +1243,39 @@ const fillAdminThemeSettingsSiteCompatibilityDefaults = (
   rawSite: LooseRecord,
   canonicalSite: LooseRecord
 ): LooseRecord => {
-  const canonicalAdminOverview = canonicalSite.adminOverview;
-  if (!isRecord(canonicalAdminOverview)) return rawSite;
+  let next = rawSite;
 
-  const rawAdminOverview = rawSite.adminOverview;
-  if (rawAdminOverview === undefined) {
-    return {
-      ...rawSite,
-      adminOverview: canonicalAdminOverview
-    };
+  const canonicalAdminOverview = canonicalSite.adminOverview;
+  if (isRecord(canonicalAdminOverview)) {
+    const rawAdminOverview = next.adminOverview;
+    if (rawAdminOverview === undefined) {
+      next = { ...next, adminOverview: canonicalAdminOverview };
+    } else if (isRecord(rawAdminOverview)) {
+      next = {
+        ...next,
+        adminOverview: {
+          publicVisible: canonicalAdminOverview.publicVisible,
+          hiddenMessage: canonicalAdminOverview.hiddenMessage,
+          ...rawAdminOverview
+        }
+      };
+    }
   }
 
-  if (!isRecord(rawAdminOverview)) return rawSite;
-
-  return {
-    ...rawSite,
-    adminOverview: {
-      publicVisible: canonicalAdminOverview.publicVisible,
-      hiddenMessage: canonicalAdminOverview.hiddenMessage,
-      ...rawAdminOverview
+  const canonicalFavicon = canonicalSite.favicon;
+  if (isRecord(canonicalFavicon)) {
+    const rawFavicon = next.favicon;
+    if (rawFavicon === undefined) {
+      next = { ...next, favicon: canonicalFavicon };
+    } else if (isRecord(rawFavicon)) {
+      const defaults = Object.fromEntries(
+        ADMIN_SITE_FAVICON_SLOTS.map((slot) => [slot, canonicalFavicon[slot]])
+      );
+      next = { ...next, favicon: { ...defaults, ...rawFavicon } };
     }
-  };
+  }
+
+  return next;
 };
 
 /* ui.* 分组兼容回填的字段表：新增分组只需在此登记，不再复制合并块。 */

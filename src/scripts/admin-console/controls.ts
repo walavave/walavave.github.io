@@ -49,6 +49,16 @@ export type AdminThemeControls = RequiredElements<{
   inputSiteFooterCopyright: HTMLInputElement | null;
   inputSiteAdminOverviewPublicVisible: HTMLInputElement | null;
   inputSiteAdminOverviewHiddenMessage: HTMLInputElement | null;
+  /* svg 槽位暂无上传 UI，隐藏 input 只负责把手工配置的值随表单快照往返。 */
+  inputSiteFaviconSvg: HTMLInputElement | null;
+  inputSiteFaviconPng: HTMLInputElement | null;
+  inputSiteFaviconAppleTouchIcon: HTMLInputElement | null;
+  inputSiteSocialGithubOrder: HTMLInputElement | null;
+  inputSiteSocialGithub: HTMLInputElement | null;
+  inputSiteSocialXOrder: HTMLInputElement | null;
+  inputSiteSocialX: HTMLInputElement | null;
+  inputSiteSocialEmailOrder: HTMLInputElement | null;
+  inputSiteSocialEmail: HTMLInputElement | null;
   inputShellBrandTitle: HTMLInputElement | null;
   inputShellQuote: HTMLTextAreaElement | null;
   inputHomeShowIntroLead: HTMLInputElement | null;
@@ -62,7 +72,6 @@ export type AdminThemeControls = RequiredElements<{
   inputHomeIntroMoreLinkSecondary: HTMLSelectElement | null;
   inputPageEssayTitle: HTMLInputElement | null;
   inputPageEssaySubtitle: HTMLInputElement | null;
-  inputPageEssaySearchSubresultLimit: HTMLInputElement | null;
   inputPageArchiveTitle: HTMLInputElement | null;
   inputPageArchiveSubtitle: HTMLInputElement | null;
   inputPageBitsTitle: HTMLInputElement | null;
@@ -131,6 +140,15 @@ export const queryAdminThemeControls = (): AdminThemeControls | null => {
     inputSiteFooterCopyright: byId<HTMLInputElement>('site-footer-copyright'),
     inputSiteAdminOverviewPublicVisible: byId<HTMLInputElement>('site-admin-overview-public-visible'),
     inputSiteAdminOverviewHiddenMessage: byId<HTMLInputElement>('site-admin-overview-hidden-message'),
+    inputSiteFaviconSvg: byId<HTMLInputElement>('site-favicon-svg'),
+    inputSiteFaviconPng: byId<HTMLInputElement>('site-favicon-png'),
+    inputSiteFaviconAppleTouchIcon: byId<HTMLInputElement>('site-favicon-apple-touch-icon'),
+    inputSiteSocialGithubOrder: byId<HTMLInputElement>('site-social-github-order'),
+    inputSiteSocialGithub: byId<HTMLInputElement>('site-social-github'),
+    inputSiteSocialXOrder: byId<HTMLInputElement>('site-social-x-order'),
+    inputSiteSocialX: byId<HTMLInputElement>('site-social-x'),
+    inputSiteSocialEmailOrder: byId<HTMLInputElement>('site-social-email-order'),
+    inputSiteSocialEmail: byId<HTMLInputElement>('site-social-email'),
     inputShellBrandTitle: byId<HTMLInputElement>('shell-brand-title'),
     inputShellQuote: byId<HTMLTextAreaElement>('shell-quote'),
     inputHomeShowIntroLead: byId<HTMLInputElement>('home-show-intro-lead'),
@@ -144,7 +162,6 @@ export const queryAdminThemeControls = (): AdminThemeControls | null => {
     inputHomeIntroMoreLinkSecondary: byId<HTMLSelectElement>('home-intro-more-link-secondary'),
     inputPageEssayTitle: byId<HTMLInputElement>('page-essay-title'),
     inputPageEssaySubtitle: byId<HTMLInputElement>('page-essay-subtitle'),
-    inputPageEssaySearchSubresultLimit: byId<HTMLInputElement>('page-essay-search-subresult-limit'),
     inputPageArchiveTitle: byId<HTMLInputElement>('page-archive-title'),
     inputPageArchiveSubtitle: byId<HTMLInputElement>('page-archive-subtitle'),
     inputPageBitsTitle: byId<HTMLInputElement>('page-bits-title'),

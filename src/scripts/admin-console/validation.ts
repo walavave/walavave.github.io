@@ -1,4 +1,7 @@
-import type { SidebarNavId } from '@/lib/theme-settings';
+import type {
+  SidebarNavId,
+  SiteSocialPresetId
+} from '@/lib/theme-settings';
 import { validateAdminThemeSettings } from '@/lib/admin-console/theme-shared';
 import { type EditableSettings } from './form-codec';
 
@@ -22,6 +25,9 @@ type ValidationContext = {
   inputSiteFooterCopyright: HTMLInputElement;
   inputSiteAdminOverviewPublicVisible: HTMLInputElement;
   inputSiteAdminOverviewHiddenMessage: HTMLInputElement;
+  inputSiteSocialGithub: HTMLInputElement;
+  inputSiteSocialX: HTMLInputElement;
+  inputSiteSocialEmail: HTMLInputElement;
   inputShellBrandTitle: HTMLInputElement;
   inputShellQuote: HTMLTextAreaElement;
   inputHomeIntroLead: HTMLTextAreaElement;
@@ -38,7 +44,6 @@ type ValidationContext = {
   inputPageMemoTitle: HTMLInputElement;
   inputPageAboutTitle: HTMLInputElement;
   inputPageEssaySubtitle: HTMLInputElement;
-  inputPageEssaySearchSubresultLimit: HTMLInputElement;
   inputPageArchiveSubtitle: HTMLInputElement;
   inputPageBitsSubtitle: HTMLInputElement;
   inputPageMemoSubtitle: HTMLInputElement;
@@ -58,6 +63,7 @@ type ValidationContext = {
   inputTypographyCopy: HTMLElement;
   inputTypographyMono: HTMLElement;
   inputTypographyBrand: HTMLElement;
+  getPresetFieldTarget: (id: SiteSocialPresetId, field: 'order' | 'href') => () => HTMLElement | null;
   getCustomFieldTarget: (
     index: number,
     field: 'order' | 'iconKey' | 'id' | 'label' | 'href'
@@ -87,6 +93,9 @@ export const createValidation = ({
   inputSiteFooterCopyright,
   inputSiteAdminOverviewPublicVisible,
   inputSiteAdminOverviewHiddenMessage,
+  inputSiteSocialGithub,
+  inputSiteSocialX,
+  inputSiteSocialEmail,
   inputShellBrandTitle,
   inputShellQuote,
   inputHomeIntroLead,
@@ -103,7 +112,6 @@ export const createValidation = ({
   inputPageMemoTitle,
   inputPageAboutTitle,
   inputPageEssaySubtitle,
-  inputPageEssaySearchSubresultLimit,
   inputPageArchiveSubtitle,
   inputPageBitsSubtitle,
   inputPageMemoSubtitle,
@@ -123,6 +131,7 @@ export const createValidation = ({
   inputTypographyCopy,
   inputTypographyMono,
   inputTypographyBrand,
+  getPresetFieldTarget,
   getCustomFieldTarget,
   getCustomVisibilityTarget,
   getNavFieldTarget,
@@ -190,6 +199,19 @@ export const createValidation = ({
         return () => inputSiteAdminOverviewPublicVisible;
       case 'site.adminOverview.hiddenMessage':
         return () => inputSiteAdminOverviewHiddenMessage;
+      /* favicon input 均为隐藏元素，错误改聚焦站点图标区域的可见按钮；svg 无独立控件，借用 png 上传按钮定位。 */
+      case 'site.favicon.svg':
+        return () => form.querySelector<HTMLElement>('[data-favicon-upload="png"]');
+      case 'site.favicon.png':
+        return () => form.querySelector<HTMLElement>('[data-favicon-clear="png"]');
+      case 'site.favicon.appleTouchIcon':
+        return () => form.querySelector<HTMLElement>('[data-favicon-clear="appleTouchIcon"]');
+      case 'site.socialLinks.github':
+        return () => inputSiteSocialGithub;
+      case 'site.socialLinks.x':
+        return () => inputSiteSocialX;
+      case 'site.socialLinks.email':
+        return () => inputSiteSocialEmail;
       case 'site.socialLinks.custom':
         return () => socialCustomAddBtn;
       case 'shell.brandTitle':
@@ -214,8 +236,6 @@ export const createValidation = ({
         return () => inputHeroImageSrc;
       case 'home.heroImageAlt':
         return () => inputHeroImageAlt;
-      case 'page.essay.searchSubresultLimit':
-        return () => inputPageEssaySearchSubresultLimit;
       case 'page.bits.defaultAuthor.name':
         return () => inputPageBitsAuthorName;
       case 'page.bits.defaultAuthor.avatar':
@@ -248,6 +268,11 @@ export const createValidation = ({
         return () => getTypographyFocusTarget(inputTypographyBrand);
       default:
         break;
+    }
+
+    if (path.startsWith('site.socialLinks.presetOrder.')) {
+      const presetId = path.slice('site.socialLinks.presetOrder.'.length) as SiteSocialPresetId;
+      return getPresetFieldTarget(presetId, 'order');
     }
 
     const customMatch = path.match(CUSTOM_ITEM_PATH_RE);
