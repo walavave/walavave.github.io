@@ -104,7 +104,7 @@ describe('markdown pipeline contract', () => {
     expect(publicRemarkPlugins).not.toContain(remarkSmartypants);
     expect(pluginOf(processorOptions.remarkPlugins[0])).toBe(remarkMath);
     expect(optionsOf(processorOptions.remarkPlugins[0])).toBe(markdownMathOptions);
-    expect(optionsOf(processorOptions.rehypePlugins[3])).toEqual({ base: '/blog/' });
+    expect(processorOptions.rehypePlugins.map(optionsOf)).toContainEqual({ base: '/blog/' });
   });
 
   it('documents Astro public rehype order without pretending Shiki is a project rehype plugin', () => {

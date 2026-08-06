@@ -905,8 +905,17 @@ export const getThemeSettingsReadDiagnostics = (
   return cloneThemeSettingsReadDiagnostics(diagnostics);
 };
 
+const stripPresetSocialFields = (snapshot: EditableThemeSettingsSnapshot): EditableThemeSettingsSnapshot => {
+  const socialLinks = snapshot.site.socialLinks as unknown as Record<string, unknown>;
+  delete socialLinks.github;
+  delete socialLinks.x;
+  delete socialLinks.email;
+  delete socialLinks.presetOrder;
+  return snapshot;
+};
+
 export const getThemeSettingsRevision = (resolved: ThemeSettingsResolved = getThemeSettings()): string =>
-  hashEditableThemeSettingsSnapshot(buildEditableThemeSettingsSnapshot(resolved));
+  hashEditableThemeSettingsSnapshot(stripPresetSocialFields(buildEditableThemeSettingsSnapshot(resolved)));
 
 const claimAvailableOrder = (
   usedOrders: Set<number>,
@@ -1673,7 +1682,8 @@ export const getThemeSettings = (): ThemeSettingsResolved => {
 export const toEditableThemeSettingsPayload = (
   resolved: ThemeSettingsResolved
 ): ThemeSettingsEditablePayload => {
-  const snapshot = buildEditableThemeSettingsSnapshot(resolved);
+  // 对外保持本地旧版 editable payload 结构：预置社交链接仍位于 custom 列表。
+  const snapshot = stripPresetSocialFields(buildEditableThemeSettingsSnapshot(resolved));
 
   return {
     revision: hashEditableThemeSettingsSnapshot(snapshot),
