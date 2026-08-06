@@ -35,6 +35,13 @@ const defaultCustomSocialIconKey: SiteSocialIconKey = socialIconOptions[0]?.valu
 
 <div class="admin-subgroup">
   <div class="admin-social-panel">
+    <!-- 预置社交链接由控制器统一读写；保留为隐藏字段以兼容旧版自定义链接面板。 -->
+    <input id="site-social-github-order" type="hidden" value="1" />
+    <input id="site-social-github" type="hidden" />
+    <input id="site-social-x-order" type="hidden" value="2" />
+    <input id="site-social-x" type="hidden" />
+    <input id="site-social-email-order" type="hidden" value="3" />
+    <input id="site-social-email" type="hidden" />
     <div class="admin-social-panel__head">
       <p class="admin-subtitle admin-subtitle--compact">
         <span class="admin-subtitle__main">社交链接</span>

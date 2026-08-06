@@ -496,9 +496,10 @@ export const createFormCodec = ({
           appleTouchIcon: normalizeSiteFaviconInput('appleTouchIcon', inputSiteFaviconAppleTouchIcon.value)
         },
         socialLinks: {
-          github: inputSiteSocialGithub.value.trim() || null,
-          x: inputSiteSocialX.value.trim() || null,
-          email: normalizeEmail(inputSiteSocialEmail.value.trim()) || null,
+          // 社交链接按本地旧版模型统一作为 custom 条目保存；预置字段仅作读取兼容。
+          github: null,
+          x: null,
+          email: null,
           presetOrder: getPresetSocialOrder(),
           custom
         }
@@ -602,7 +603,20 @@ export const createFormCodec = ({
       settings.site.socialLinks?.presetOrder?.email ?? ADMIN_SOCIAL_PRESET_ORDER_DEFAULT.email
     );
     inputSiteSocialEmail.value = settings.site.socialLinks?.email || '';
-    replaceCustomRows(settings.site.socialLinks?.custom || []);
+    const existingCustom = settings.site.socialLinks?.custom || [];
+    const existingIds = new Set(existingCustom.map((item) => item.id));
+    const presetRows: EditableCustomSocialItem[] = [
+      {
+        id: 'github', label: 'GitHub', href: settings.site.socialLinks?.github || '', iconKey: 'github' as const, visible: Boolean(settings.site.socialLinks?.github), order: settings.site.socialLinks?.presetOrder?.github ?? 1
+      },
+      {
+        id: 'x', label: 'X', href: settings.site.socialLinks?.x || '', iconKey: 'x' as const, visible: Boolean(settings.site.socialLinks?.x), order: settings.site.socialLinks?.presetOrder?.x ?? 2
+      },
+      {
+        id: 'email', label: 'Email', href: settings.site.socialLinks?.email ? `mailto:${settings.site.socialLinks.email}` : '', iconKey: 'email' as const, visible: Boolean(settings.site.socialLinks?.email), order: settings.site.socialLinks?.presetOrder?.email ?? 3
+      }
+    ].filter((item) => item.href && !existingIds.has(item.id));
+    replaceCustomRows([...presetRows, ...existingCustom]);
     normalizeSocialOrders();
     inputShellBrandTitle.value = settings.shell.brandTitle || '';
     inputShellQuote.value = settings.shell.quote || '';

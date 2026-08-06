@@ -143,6 +143,9 @@ export const ADMIN_SOCIAL_ICON_KEYS = [
   'x',
   'email',
   'weibo',
+  'zhihu',
+  'wechat',
+  'xiaohongshu',
   'facebook',
   'instagram',
   'telegram',
@@ -214,11 +217,11 @@ export const getAdminSocialOrderIssues = (
     : presetOrder as Readonly<SiteSocialPresetOrder>;
   const resolvedCustomItems = legacyItems ?? customItems;
   const entries = [
-    ...ADMIN_SOCIAL_PRESET_IDS.map((id) => ({
+    ...(legacyItems ? [] : ADMIN_SOCIAL_PRESET_IDS.map((id) => ({
       scope: 'preset' as const,
       key: id,
       order: resolvedPresetOrder[id]
-    })),
+    }))),
     ...resolvedCustomItems.map((item) => ({
       scope: 'custom' as const,
       key: item.key,
@@ -245,7 +248,7 @@ export const getAdminSocialOrderIssues = (
     }
   });
 
-  return issues;
+  return (legacyItems ? issues.map(({ scope: _scope, ...issue }) => issue) : issues) as AdminSocialOrderIssue[];
 };
 
 export const getAdminNavOrderIssues = (items: readonly AdminNavOrderInput[]): AdminNavOrderIssue[] => {
@@ -859,7 +862,8 @@ export const validateAdminThemeSettings = (
     }
 
     const allowsLocalImage = item.iconKey === 'wechat' && normalizeContentImageSource(item.href) !== null;
-    if (!item.href || (!isAdminAllowedHttpsUrl(item.href) && !allowsLocalImage)) {
+    const allowsEmail = item.iconKey === 'email' && /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(item.href);
+    if (!item.href || (!isAdminAllowedHttpsUrl(item.href) && !allowsLocalImage && !allowsEmail)) {
       pushIssue(`${basePath}.href`, `自定义链接 #${index + 1} 的链接必须是合法 https:// 地址`);
     }
     if (!isAdminSocialIconKey(item.iconKey)) {

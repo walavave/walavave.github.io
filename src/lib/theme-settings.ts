@@ -12,6 +12,7 @@ import {
   normalizeSiteFaviconPath,
   type SiteFaviconSlot
 } from '../utils/format';
+import { normalizeContentImageSource } from '../utils/image-source';
 import {
   ADMIN_ARTICLE_META_DATE_LABEL_DEFAULT,
   ADMIN_ARTICLE_META_DATE_LABEL_MAX_LENGTH,
@@ -1066,7 +1067,13 @@ const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefi
     if (!isRecord(row)) continue;
 
     const label = asNonEmptyString(row.label);
-    const href = asHttpsUrl(row.href);
+    const iconKey = asSocialIconKey(row.iconKey) ?? 'website';
+    const href = (iconKey === 'email' && typeof row.href === 'string' && /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(row.href.trim())
+      ? row.href.trim()
+      : asHttpsUrl(row.href))
+      ?? (iconKey === 'wechat' && typeof row.href === 'string'
+        ? normalizeContentImageSource(row.href) ?? undefined
+        : undefined);
     if (!label || !href) continue;
 
     const baseId = asNonEmptyString(row.id) ?? `custom-${index + 1}`;
@@ -1083,7 +1090,7 @@ const parseSocialCustomItems = (value: unknown): SiteSocialCustomItem[] | undefi
       id,
       label,
       href,
-      iconKey: asSocialIconKey(row.iconKey) ?? 'website',
+      iconKey,
       visible: asBoolean(row.visible) ?? true,
       order: rawOrder !== undefined && isAdminSocialOrderValue(rawOrder) ? rawOrder : index + 1
     });

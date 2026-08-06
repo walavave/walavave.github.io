@@ -49,6 +49,14 @@
         "iconKey": "xiaohongshu",
         "visible": true,
         "order": 6
+      },
+      {
+        "id": "x",
+        "label": "X",
+        "href": "https://x.com/walavave",
+        "iconKey": "x",
+        "visible": true,
+        "order": 7
       }
     ]
   }
