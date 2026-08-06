@@ -13,8 +13,8 @@
   },
   "favicon": {
     "svg": null,
-    "png": null,
-    "appleTouchIcon": null
+    "png": "/images/site/favicon-256x256-124d01bc.png",
+    "appleTouchIcon": "/images/site/apple-touch-icon-256x256-124d01bc.png"
   },
   "socialLinks": {
     "github": null,
