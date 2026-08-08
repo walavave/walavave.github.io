@@ -15,9 +15,11 @@ describe('content local images', () => {
     process.env.ASTRO_WHONO_INTERNAL_TEST_PROJECT_ROOT = tempRoot;
     await mkdir(path.join(tempRoot, 'src', 'content', 'essay', 'demo-assets'), { recursive: true });
     await mkdir(path.join(tempRoot, 'src', 'content', 'memo', 'assets'), { recursive: true });
+    await mkdir(path.join(tempRoot, 'public', 'images'), { recursive: true });
     await writeFile(path.join(tempRoot, 'src', 'content', 'essay', 'demo.md'), 'body');
     await writeFile(path.join(tempRoot, 'src', 'content', 'essay', 'demo-assets', 'cover.webp'), 'image');
     await writeFile(path.join(tempRoot, 'src', 'content', 'memo', 'assets', 'inline.png'), 'image');
+    await writeFile(path.join(tempRoot, 'public', 'images', 'cover.webp'), 'image');
   });
 
   afterEach(async () => {
@@ -49,6 +51,17 @@ describe('content local images', () => {
 
     expect(result).toContain('/blog/@fs/');
     expect(result).toContain('/src/content/essay/demo-assets/cover.webp');
+  });
+
+  it('rewrites repository-relative public image paths without the public prefix', () => {
+    const result = resolveContentImagePublicUrl({
+      sourceFilePath: path.join(tempRoot, 'src', 'content', 'essay', 'demo.md'),
+      value: 'public/images/cover.webp?version=1',
+      base: '/blog/',
+      requireExists: true
+    });
+
+    expect(result).toBe('/blog/images/cover.webp?version=1');
   });
 
   it('ignores remote and root-absolute image references', () => {

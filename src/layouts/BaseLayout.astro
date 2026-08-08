@@ -2,7 +2,7 @@
 import Sidebar from '../components/Sidebar.astro';
 import UiIcon from '../components/UiIcon.astro';
 import globalStylesHref from '../styles/global.css?url';
-import { hasSiteUrl } from '../../site.config.mjs';
+import { hasSiteUrl, site } from '../../site.config.mjs';
 import { createWithBase } from '../utils/format';
 import {
   ADMIN_DEFAULT_SIDEBAR_NAV_MODE_STORAGE_KEY,
@@ -33,6 +33,10 @@ const {
   deferGlobalStyles?: boolean;
   activeNavId?: SidebarNavId;
   adminSidebarScope?: 'default' | 'page';
+  articleStructuredData?: {
+    datePublished: string;
+    dateModified?: string;
+  };
 };
 
 const { settings } = getThemeSettings();
@@ -79,11 +83,59 @@ const withBase = createWithBase(base);
 const faviconLinks = getSiteFaviconLinks(settings.site.favicon);
 const bodyClassNames = typeof bodyClass === 'string' ? bodyClass.split(/\s+/).filter(Boolean) : [];
 const isAdminPage = bodyClassNames.includes('admin-page');
+const articleStructuredData = (Astro.props as { articleStructuredData?: {
+  datePublished: string;
+  dateModified?: string;
+} }).articleStructuredData;
 const isDev = import.meta.env.DEV;
 const isDevAdminPage = isAdminPage && isDev;
 const adminDevState = isAdminPage ? (isDev ? 'true' : 'false') : undefined;
 const isPageScopedAdminSidebar = isAdminPage && adminSidebarScope === 'page';
 const shouldLoadAdminSidebarNavMode = isDev && !isPageScopedAdminSidebar;
+const structuredData = (hasSiteUrl && Astro.site) ? (() => {
+  const siteUrl = new URL(Astro.site);
+  const pageUrl = new URL(Astro.url.pathname, siteUrl).toString();
+  const personId = `${siteUrl.toString().replace(/\/$/, '')}/#person`;
+  const sameAs = settings.site.socialLinks.resolvedSocialItems
+    .filter((item) => item.visible && /^https?:\/\//i.test(item.href))
+    .map((item) => item.href);
+  const graph: Record<string, unknown>[] = [
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl.toString().replace(/\/$/, '')}/#website`,
+      url: siteUrl.toString(),
+      name: siteTitle,
+      description: settings.site.description,
+      inLanguage: htmlLang,
+      publisher: { '@id': personId }
+    },
+    {
+      '@type': 'Person',
+      '@id': personId,
+      name: site.author,
+      url: siteUrl.toString(),
+      ...(sameAs.length ? { sameAs } : {})
+    }
+  ];
+
+  if (articleStructuredData) {
+    graph.push({
+      '@type': 'Article',
+      '@id': `${pageUrl}#article`,
+      mainEntityOfPage: { '@id': pageUrl },
+      headline: title ?? siteTitle,
+      description: metaDescription,
+      ...(ogImage ? { image: [ogImage] } : {}),
+      datePublished: articleStructuredData.datePublished,
+      ...(articleStructuredData.dateModified ? { dateModified: articleStructuredData.dateModified } : {}),
+      author: { '@id': personId },
+      publisher: { '@id': personId },
+      inLanguage: htmlLang
+    });
+  }
+
+  return { '@context': 'https://schema.org', '@graph': graph };
+})() : null;
 const devUiPrefsStylesHref = isDev && !isAdminPage
   ? (await import('../styles/components/admin/dev-ui-prefs.css?url')).default
   : null;
@@ -172,6 +224,10 @@ const adminUiPrefsScriptHref = isDevAdminPage
     <title>{fullTitle}</title>
     {metaDescription && <meta name="description" content={metaDescription} />}
     {canonical && <link rel="canonical" href={canonical} />}
+    <meta name="robots" content={isAdminPage ? 'noindex,nofollow' : 'index,follow'} />
+    {structuredData ? (
+      <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData).replace(/</g, '\\u003c')} />
+    ) : null}
     <meta property="og:site_name" content={siteTitle} />
     <meta property="og:title" content={fullTitle} />
     {metaDescription && <meta property="og:description" content={metaDescription} />}

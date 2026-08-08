@@ -6,8 +6,17 @@ export const GET: APIRoute = () => {
 
   if (hasSiteUrl) {
     const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '');
-    // 直接拼接（siteUrl 无尾随斜杠）：保留 SITE_URL 自带的路径段，new URL 的根绝对路径会把它剥掉。
-    lines.push(`Sitemap: ${siteUrl}${basePath}/sitemap-index.xml`);
+    const site = new URL(siteUrl);
+    const sitePath = site.pathname.replace(/\/+$/, '');
+    // GitHub Pages 的项目站点会同时把项目路径写入 SITE_URL 和 BASE_URL，
+    // 这里避免生成 /blog/blog/sitemap-index.xml。
+    const sitemapPath = sitePath.endsWith(basePath)
+      ? `${sitePath}/sitemap-index.xml`
+      : `${sitePath}${basePath}/sitemap-index.xml`;
+    site.pathname = sitemapPath;
+    site.search = '';
+    site.hash = '';
+    lines.push(`Sitemap: ${site.toString()}`);
   }
 
   return new Response(lines.join('\n'), {

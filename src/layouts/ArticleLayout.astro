@@ -79,6 +79,10 @@ const shouldShowMetaLine = articleMetaSettings.showDate
   title={entry.data.title}
   description={description}
   image={ogImage}
+  articleStructuredData={{
+    datePublished: (entry.data.publishedAt ?? entry.data.date).toISOString(),
+    ...(updatedAt ? { dateModified: updatedAt.toISOString() } : {})
+  }}
   ogType="article"
   bodyClass="article-page immersive-page"
   activeNavId={activeNavId}

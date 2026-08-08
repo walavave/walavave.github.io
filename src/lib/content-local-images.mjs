@@ -20,6 +20,8 @@ const getProjectRoot = () => process.env.ASTRO_WHONO_INTERNAL_TEST_PROJECT_ROOT?
 
 export const getContentRoot = () => path.join(getProjectRoot(), ...CONTENT_ROOT_SEGMENTS);
 
+const getPublicRoot = () => path.join(getProjectRoot(), 'public');
+
 const normalizeRelativeImageReference = (value) => {
   const trimmed = String(value ?? '').trim();
   if (
@@ -69,10 +71,27 @@ export const resolveContentImagePublicUrl = ({
   requireExists = false,
   devFs = false
 }) => {
-  if (!sourceFilePath) return null;
-
   const normalized = normalizeRelativeImageReference(value);
   if (!normalized) return null;
+
+  // Admin image paths are stored relative to the repository, so a public
+  // asset may arrive as `public/images/cover.webp`.  `public/` is not part of
+  // the URL exposed by Astro and must not be resolved relative to the article.
+  if (normalized.decodedPath === 'public' || normalized.decodedPath.startsWith('public/')) {
+    const publicRelativePath = normalized.decodedPath.slice('public/'.length);
+    if (!publicRelativePath || publicRelativePath.startsWith('/') || publicRelativePath.split('/').includes('..')) {
+      return null;
+    }
+
+    const resolvedFilePath = path.resolve(getPublicRoot(), publicRelativePath);
+    const extension = path.extname(resolvedFilePath).toLowerCase();
+    if (!CONTENT_IMAGE_EXTENSIONS.has(extension)) return null;
+    if (requireExists && !existsSync(resolvedFilePath)) return null;
+
+    return `${withBase(base, `/${publicRelativePath}`)}${normalized.suffix}`;
+  }
+
+  if (!sourceFilePath) return null;
 
   const resolvedFilePath = path.resolve(path.dirname(sourceFilePath), normalized.decodedPath);
   const extension = path.extname(resolvedFilePath).toLowerCase();
