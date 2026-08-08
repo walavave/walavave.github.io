@@ -12,7 +12,7 @@
 :::faq{question="如何交换友链？"}
 可以通过 GitHub Issue 联系我或者 [发送邮件](mailto:你的邮箱@example.com?subject=交换友链申请&body=站点名称：%0A链接：%0A简介：%0A头像：)，请附上站点名称、链接、简介和头像。
 
-::site-info{name="Walavave" url="https://walavave.github.io/blog/" description="Walavave 的个人博客" avatar="https://walavave.github.io/blog/author/avatar.webp"}
+::site-info{name="Walavave" url="https://walavave.github.io/" description="Walavave 的个人博客" avatar="https://walavave.github.io/author/avatar.webp"}
 :::
 
 :::faq{question="可以转载这里的内容吗？"}

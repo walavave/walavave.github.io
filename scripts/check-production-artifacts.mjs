@@ -16,7 +16,7 @@ import {
 
 const normalizeSiteUrl = (value) => value.trim().replace(/\/+$/, '');
 
-/* 与 astro.config.mjs 的 normalizeDeploymentBase 同语义；根路径为空串，子路径形如 '/blog'。
+/* 与 astro.config.mjs 的 normalizeDeploymentBase 同语义；根路径为空串，子路径形如 '/subpath'。
    dist 目录结构不随 base 嵌套，base 只影响产物内的 URL。 */
 const basePathSegment = String(process.env.ASTRO_WHONO_BASE_PATH ?? '').trim().replace(/^\/+|\/+$/g, '');
 const basePrefix = basePathSegment ? `/${basePathSegment}` : '';
@@ -111,6 +111,7 @@ export const runProductionArtifactCheck = async (options = {}) => {
   const requiredArtifacts = [
     'dist/sitemap-index.xml',
     'dist/sitemap-0.xml',
+    'dist/sitemap.xml',
     'dist/robots.txt',
     'dist/rss.xml',
     'dist/archive/rss.xml',
@@ -145,7 +146,7 @@ export const runProductionArtifactCheck = async (options = {}) => {
 
   const robotsTxt = readText('dist/robots.txt');
   expect(
-    robotsTxt.includes(`Sitemap: ${siteUrl}${basePrefix}/sitemap-index.xml`),
+    robotsTxt.includes(`Sitemap: ${siteUrl}${basePrefix}/sitemap.xml`),
     'robots.txt is missing the expected Sitemap line'
   );
 

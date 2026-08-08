@@ -224,6 +224,7 @@ const adminUiPrefsScriptHref = isDevAdminPage
     <title>{fullTitle}</title>
     {metaDescription && <meta name="description" content={metaDescription} />}
     {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="sitemap" type="application/xml" href={withBase('/sitemap.xml')} />
     <meta name="robots" content={isAdminPage ? 'noindex,nofollow' : 'index,follow'} />
     {structuredData ? (
       <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData).replace(/</g, '\\u003c')} />

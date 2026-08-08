@@ -15,7 +15,7 @@ const SITEMAP_ROUTE_ROOTS = new Set(['about', 'admin', 'archive', 'bits', 'check
 const rawDeploymentBase = process.env.ASTRO_WHONO_BASE_PATH ?? '/';
 const trimmedDeploymentBase = String(rawDeploymentBase).trim();
 
-// Git Bash 的 MSYS 路径转换会把 "/blog" 这类值改写成 "C:/Program Files/Git/blog"，
+// Git Bash 的 MSYS 路径转换会把 "/subpath" 这类值改写成文件系统路径，
 // 导致深处的 "Missing parameter" 预渲染错误；在配置期直接报可读错误。
 // 规避：命令前加 MSYS_NO_PATHCONV=1（或 MSYS2_ENV_CONV_EXCL=ASTRO_WHONO_BASE_PATH）。
 if (/[:\s]/.test(trimmedDeploymentBase)) {

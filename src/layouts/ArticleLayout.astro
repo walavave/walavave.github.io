@@ -37,12 +37,6 @@ const {
 const entryTags: string[] = entry?.data?.tags ?? [];
 const defaultImage = '/og.svg';
 const base = import.meta.env.BASE_URL ?? '/';
-const withBase = (value: string) => {
-  const normalizedBase = base.replace(/\/+$/, '');
-  return normalizedBase && normalizedBase !== '/'
-    ? `${normalizedBase}${value.startsWith('/') ? value : `/${value}`}`
-    : value;
-};
 const entrySourcePath = typeof (entry as { filePath?: unknown })?.filePath === 'string'
   ? (entry as { filePath?: string }).filePath ?? null
   : null;
@@ -54,7 +48,7 @@ const coverImage = rawCoverImage
       base,
       requireExists: true,
       devFs: import.meta.env.DEV
-    }) ?? (/^\/(?!\/)/.test(rawCoverImage) ? withBase(rawCoverImage) : rawCoverImage))
+    }) ?? rawCoverImage)
   : null;
 const ogImage = coverImage ?? defaultImage;
 const derivedText = getEssayDerivedText(entry);

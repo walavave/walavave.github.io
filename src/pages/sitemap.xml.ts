@@ -11,12 +11,9 @@ const escapeXml = (value: string) => value
 
 export const GET: APIRoute = async () => {
   const origin = new URL(site.url);
-  const sitePath = origin.pathname.replace(/\/+$/, '');
-  const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/+$/, '');
-  const deploymentPath = sitePath.endsWith(basePath) ? sitePath : `${sitePath}${basePath}`;
   const publicUrl = (pathname: string) => {
     const url = new URL(origin);
-    url.pathname = `${deploymentPath}${pathname}`.replace(/\/+/g, '/');
+    url.pathname = pathname;
     url.search = '';
     url.hash = '';
     return escapeXml(url.toString());
