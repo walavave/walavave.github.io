@@ -418,7 +418,7 @@ const LEGACY_ABOUT_TITLE = '关于';
 const LEGACY_QUOTE = 'A minimal Astro theme\nfor essays, notes, and docs.\nDesigned for reading,\nopen-source.';
 const LEGACY_FOOTER_START_YEAR = 2025;
 const LEGACY_FOOTER_SHOW_CURRENT_YEAR = true;
-const LEGACY_FOOTER_COPYRIGHT = 'Whono · Theme Demo · by cxro';
+const LEGACY_FOOTER_COPYRIGHT = 'Walavave Blog · by Walavave';
 const DEFAULT_PRESET_SOCIAL_ORDER: SiteSocialPresetOrder = {
   github: 1,
   x: 2,
@@ -427,7 +427,7 @@ const DEFAULT_PRESET_SOCIAL_ORDER: SiteSocialPresetOrder = {
 const LEGACY_SOCIAL_LINKS: SiteSocialLinks = {
   github: 'https://github.com/cxro/astro-whono',
   x: 'https://twitter.com/yourname',
-  email: 'Whono@linux.do',
+  email: 'walavave@gmail.com',
   presetOrder: { ...DEFAULT_PRESET_SOCIAL_ORDER },
   custom: [],
   resolvedSocialItems: []
@@ -469,7 +469,7 @@ const cloneThemeSettingsReadDiagnostics = (
 ): ThemeSettingsReadDiagnostic[] => diagnostics.map((diagnostic) => ({ ...diagnostic }));
 
 const DEFAULT_SITE: SiteSettings = {
-  title: 'Whono',
+  title: 'Walavave Blog',
   description: '一个 Astro 主题的展示站：轻量、可维护、可复用。',
   defaultLocale: 'zh-CN',
   footer: {
@@ -497,7 +497,7 @@ const DEFAULT_SITE: SiteSettings = {
 };
 
 const DEFAULT_SHELL: ShellSettings = {
-  brandTitle: 'Whono',
+  brandTitle: 'Walavave',
   quote: LEGACY_QUOTE,
   nav: cloneNavItems(LEGACY_NAV)
 };
@@ -526,7 +526,7 @@ const DEFAULT_PAGE: PageSettings = {
     title: LEGACY_BITS_TITLE,
     subtitle: LEGACY_BITS_SUBTITLE,
     defaultAuthor: {
-      name: 'Whono',
+      name: 'Walavave',
       avatar: 'author/avatar.webp'
     }
   },
