@@ -34,7 +34,9 @@ const {
   activeNavId?: SidebarNavId;
   adminSidebarScope?: 'default' | 'page';
   articleStructuredData?: {
-    datePublished: string;
+    type?: 'Article' | 'BlogPosting';
+    headline?: string;
+    datePublished?: string;
     dateModified?: string;
   };
 };
@@ -80,11 +82,15 @@ const yearRange = footerShowCurrentYear && currentYear > footerStartYear
   : `${footerStartYear}`;
 const base = import.meta.env.BASE_URL ?? '/';
 const withBase = createWithBase(base);
+const authorName = site.author;
+const authorProfileUrl = withBase('/about/');
 const faviconLinks = getSiteFaviconLinks(settings.site.favicon);
 const bodyClassNames = typeof bodyClass === 'string' ? bodyClass.split(/\s+/).filter(Boolean) : [];
 const isAdminPage = bodyClassNames.includes('admin-page');
 const articleStructuredData = (Astro.props as { articleStructuredData?: {
-  datePublished: string;
+  type?: 'Article' | 'BlogPosting';
+  headline?: string;
+  datePublished?: string;
   dateModified?: string;
 } }).articleStructuredData;
 const isDev = import.meta.env.DEV;
@@ -120,13 +126,13 @@ const structuredData = (hasSiteUrl && Astro.site) ? (() => {
 
   if (articleStructuredData) {
     graph.push({
-      '@type': 'Article',
+      '@type': articleStructuredData.type ?? 'Article',
       '@id': `${pageUrl}#article`,
       mainEntityOfPage: { '@id': pageUrl },
-      headline: title ?? siteTitle,
+      headline: articleStructuredData.headline ?? title ?? siteTitle,
       description: metaDescription,
       ...(ogImage ? { image: [ogImage] } : {}),
-      datePublished: articleStructuredData.datePublished,
+      ...(articleStructuredData.datePublished ? { datePublished: articleStructuredData.datePublished } : {}),
       ...(articleStructuredData.dateModified ? { dateModified: articleStructuredData.dateModified } : {}),
       author: { '@id': personId },
       publisher: { '@id': personId },
@@ -223,6 +229,7 @@ const adminUiPrefsScriptHref = isDevAdminPage
     ))}
     <title>{fullTitle}</title>
     {metaDescription && <meta name="description" content={metaDescription} />}
+    <meta name="author" content={authorName} />
     {canonical && <link rel="canonical" href={canonical} />}
     <link rel="sitemap" type="application/xml" href={withBase('/sitemap.xml')} />
     <meta name="robots" content={isAdminPage ? 'noindex,nofollow' : 'index,follow'} />
@@ -234,6 +241,7 @@ const adminUiPrefsScriptHref = isDevAdminPage
     {metaDescription && <meta property="og:description" content={metaDescription} />}
     {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:type" content={ogType} />
+    {articleStructuredData ? <meta property="article:author" content={authorName} /> : null}
     {ogImage && <meta property="og:image" content={ogImage} />}
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
     <meta name="twitter:title" content={fullTitle} />
@@ -279,7 +287,12 @@ const adminUiPrefsScriptHref = isDevAdminPage
       <main id="content" class="content" tabindex="-1">
         <div class="content__inner">
           <slot />
-          <footer class="site-footer">© {yearRange} {footerCopyright}</footer>
+          <footer class="site-footer">
+            <address class="site-footer__author">
+              作者：<a href={authorProfileUrl} rel="author">{authorName}</a>
+            </address>
+            <span>© {yearRange} {footerCopyright}</span>
+          </footer>
         </div>
       </main>
     </div>

@@ -184,6 +184,17 @@
   margin-top: auto;
 }
 
+.site-footer__author {
+  margin: 0 0 6px;
+  font-style: normal;
+}
+
+.site-footer__author a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ===============================
    页面头部
 ================================ */

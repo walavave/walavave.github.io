@@ -86,6 +86,7 @@ const groups = buildMemoTocGroups(headings);
 <BaseLayout
   title={memoTitle}
   description="整理一些值得留存的片刻与回忆。"
+  articleStructuredData={{ type: 'Article', headline: memoTitle, datePublished: (entry.data.date ?? new Date()).toISOString() }}
   bodyClass="memo-page immersive-page"
 >
   {hasMath ? (

@@ -67,7 +67,11 @@ const currentTagState = currentTag
   : null;
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription}>
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  articleStructuredData={{ type: 'BlogPosting', headline: pageTitle, datePublished: items[0]?.data.date.toISOString() }}
+>
   <div
     class="entry-filters"
     data-entry-filters

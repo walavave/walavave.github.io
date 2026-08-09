@@ -42,6 +42,7 @@ const { Content } = await render(entryWithContactLinks);
 <BaseLayout
   title={aboutTitle}
   description={aboutSubtitle ?? undefined}
+  articleStructuredData={{ type: 'Article', headline: aboutTitle }}
   bodyClass="about-page"
 >
   <div class="page-header page-header--about">

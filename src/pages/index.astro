@@ -654,7 +654,11 @@ body[data-reading="immersive"] .reader-toggle .icon-book-open {
 ].join('\n\n');
 ---
 
-<BaseLayout bodyClass={homeBodyClass} deferGlobalStyles={true}>
+<BaseLayout
+  bodyClass={homeBodyClass}
+  deferGlobalStyles={true}
+  articleStructuredData={{ type: 'BlogPosting', headline: 'Walavave Blog', datePublished: latest[0]?.data.date.toISOString() }}
+>
   <style slot="head" is:inline set:html={homeHeadCriticalCss}></style>
   <h1 class="sr-only">Walavave Blog</h1>
   {

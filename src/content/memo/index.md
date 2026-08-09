@@ -16,7 +16,7 @@ draft: false
 **海南（7.7-7.14）** 本来以为受台风影响会下雨，但当我们六人行抵达后，连着六七天未曾见雨。三亚、万宁只有晴天才好玩。实际上不少时间在打王者。
 
 <figure class="figure figure--sm figure--center">
-  <img src="./assets/wanning.webp" alt="" />
+  <img src="./assets/wanning.webp" alt="万宁喜来登酒店" />
   <figcaption class="figure-caption">万宁 · 喜来登酒店</figcaption>
 </figure>
 

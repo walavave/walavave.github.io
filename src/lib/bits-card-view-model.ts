@@ -110,11 +110,13 @@ export const buildBitsCardViewModel = ({
       if (!src) return null;
       const width = toPositiveInteger(image.width);
       const height = toPositiveInteger(image.height);
+      const imageAlt = (image.alt ?? '').trim() ||
+        `${(bodyText ? deriveMarkdownText(bodyText).excerptText : '').trim() || '絮语'}配图`;
       return {
         src: withBase(src),
         ...(width ? { width } : {}),
         ...(height ? { height } : {}),
-        alt: (image.alt ?? '').trim()
+        alt: imageAlt
       };
     })
     .filter((image): image is BitsCardImageViewModel => image !== null);

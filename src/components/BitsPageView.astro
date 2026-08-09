@@ -73,7 +73,11 @@ const hasRenderedMath = cards.some((card) => card.hasMath);
 const katexStylesheetAttrs = { [MARKDOWN_MATH_STYLESHEET_DATA_ATTR]: 'true' };
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription}>
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  articleStructuredData={{ type: 'BlogPosting', headline: pageTitle, datePublished: items[0]?.data.date.toISOString() }}
+>
   {hasRenderedMath ? (
     <link
       slot="head"

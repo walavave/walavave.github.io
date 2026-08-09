@@ -38,11 +38,11 @@ const getImageFetchPriority = (prioritize: boolean) => (prioritize ? 'high' : un
   data-slug={card.slug}
 >
   <div class="bit-author">
-    <div class={`avatar${card.authorAvatar ? ' avatar--image' : ' is-fallback'}`} aria-hidden="true">
+    <div class={`avatar${card.authorAvatar ? ' avatar--image' : ' is-fallback'}`}>
       {card.authorAvatar ? (
         <img
           src={card.authorAvatar}
-          alt=""
+          alt={`${card.authorName}头像`}
           width="32"
           height="32"
           loading="lazy"

@@ -48,7 +48,12 @@ const pageDescription = joinPageSubtitleText(
 const fallbackListId = 'essay-tag-list';
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription} bodyClass="essay-page">
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  bodyClass="essay-page"
+  articleStructuredData={{ type: 'BlogPosting', headline: pageTitle, datePublished: items[0]?.data.date.toISOString() }}
+>
   <div
     class="entry-filters"
     data-entry-filters
