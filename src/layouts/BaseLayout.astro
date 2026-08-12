@@ -98,50 +98,61 @@ const isDevAdminPage = isAdminPage && isDev;
 const adminDevState = isAdminPage ? (isDev ? 'true' : 'false') : undefined;
 const isPageScopedAdminSidebar = isAdminPage && adminSidebarScope === 'page';
 const shouldLoadAdminSidebarNavMode = isDev && !isPageScopedAdminSidebar;
-const structuredData = (hasSiteUrl && Astro.site) ? (() => {
-  const siteUrl = new URL(Astro.site);
-  const pageUrl = new URL(Astro.url.pathname, siteUrl).toString();
-  const personId = `${siteUrl.toString().replace(/\/$/, '')}/#person`;
+// Article JSON-LD must not depend on SITE_URL. SITE_URL is needed to make
+// canonical URLs absolute, but omitting the whole graph makes every article
+// invisible to schema/GEO crawlers when the deployment forgot that variable.
+const structuredData = (() => {
+  const siteUrl = hasSiteUrl && Astro.site ? new URL(Astro.site) : null;
+  const pageUrl = siteUrl ? new URL(Astro.url.pathname, siteUrl).toString() : Astro.url.pathname;
+  const personId = siteUrl ? `${siteUrl.toString().replace(/\/$/, '')}/#person` : null;
   const sameAs = settings.site.socialLinks.resolvedSocialItems
     .filter((item) => item.visible && /^https?:\/\//i.test(item.href))
     .map((item) => item.href);
-  const graph: Record<string, unknown>[] = [
-    {
-      '@type': 'WebSite',
-      '@id': `${siteUrl.toString().replace(/\/$/, '')}/#website`,
-      url: siteUrl.toString(),
-      name: siteTitle,
-      description: settings.site.description,
-      inLanguage: htmlLang,
-      publisher: { '@id': personId }
-    },
-    {
-      '@type': 'Person',
-      '@id': personId,
-      name: site.author,
-      url: siteUrl.toString(),
-      ...(sameAs.length ? { sameAs } : {})
-    }
-  ];
+  const graph: Record<string, unknown>[] = [];
+
+  if (siteUrl && personId) {
+    graph.push(
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl.toString().replace(/\/$/, '')}/#website`,
+        url: siteUrl.toString(),
+        name: siteTitle,
+        description: settings.site.description,
+        inLanguage: htmlLang,
+        publisher: { '@id': personId }
+      },
+      {
+        '@type': 'Person',
+        '@id': personId,
+        name: site.author,
+        url: siteUrl.toString(),
+        ...(sameAs.length ? { sameAs } : {})
+      }
+    );
+  }
 
   if (articleStructuredData) {
+    const author = personId
+      ? { '@id': personId }
+      : { '@type': 'Person', name: authorName };
     graph.push({
       '@type': articleStructuredData.type ?? 'Article',
       '@id': `${pageUrl}#article`,
+      url: pageUrl,
       mainEntityOfPage: { '@id': pageUrl },
       headline: articleStructuredData.headline ?? title ?? siteTitle,
       description: metaDescription,
       ...(ogImage ? { image: [ogImage] } : {}),
       ...(articleStructuredData.datePublished ? { datePublished: articleStructuredData.datePublished } : {}),
       ...(articleStructuredData.dateModified ? { dateModified: articleStructuredData.dateModified } : {}),
-      author: { '@id': personId },
-      publisher: { '@id': personId },
+      author,
+      publisher: author,
       inLanguage: htmlLang
     });
   }
 
-  return { '@context': 'https://schema.org', '@graph': graph };
-})() : null;
+  return graph.length ? { '@context': 'https://schema.org', '@graph': graph } : null;
+})();
 const devUiPrefsStylesHref = isDev && !isAdminPage
   ? (await import('../styles/components/admin/dev-ui-prefs.css?url')).default
   : null;

@@ -50,3 +50,9 @@ $$
     </figure>
   </li>
 </ul>
+
+## Link Cards
+
+::link-card[一个 B 站视频]{url="https://www.bilibili.com/video/BV1xx411c7mD" description="链接卡片 smoke fixture"}
+
+::link-card[知乎文章]{url="https://zhuanlan.zhihu.com/p/123456789"}

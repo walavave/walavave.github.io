@@ -16,6 +16,7 @@ import { rehypeAboutDirectives, remarkAboutDirectives } from './about-directives
 import { rehypeDetailsMarkdown } from './rehype-details-markdown.mjs';
 import remarkCallout from './remark-callout.mjs';
 import { remarkCjkStrong } from './remark-cjk-strong.mjs';
+import remarkLinkCard from './remark-link-card.mjs';
 import { sanitizeSchema } from './sanitize-schema.mjs';
 import shikiToolbar from './shiki-toolbar.mjs';
 
@@ -49,6 +50,12 @@ export const markdownFeatureContract = Object.freeze([
     id: 'callout',
     syntax: 'containerDirective',
     projectPlugins: ['remark-directive', 'remark-callout'],
+    editorAffordance: 'src/components/admin/editor/markdown'
+  },
+  {
+    id: 'link-card',
+    syntax: 'leafDirective',
+    projectPlugins: ['remark-directive', 'remark-link-card'],
     editorAffordance: 'src/components/admin/editor/markdown'
   },
   {
@@ -127,7 +134,7 @@ export const publicMarkdownRemarkSegments = Object.freeze([
   },
   {
     id: 'project-remark',
-    plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout']
+    plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout', 'remark-link-card']
   }
 ]);
 
@@ -143,7 +150,7 @@ export const previewMarkdownRemarkSegments = Object.freeze([
   },
   {
     id: 'project-remark',
-    plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout']
+    plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout', 'remark-link-card']
   }
 ]);
 
@@ -306,6 +313,7 @@ export const createProjectMarkdownRemarkPlugins = ({ aboutEnabled } = {}) => [
   remarkDirective,
   withOptions(remarkAboutDirectives, aboutEnabled === undefined ? undefined : { enabled: aboutEnabled }),
   remarkCallout,
+  remarkLinkCard,
   remarkNormalizeCodeLanguages
 ];
 

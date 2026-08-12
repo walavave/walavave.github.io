@@ -71,6 +71,13 @@ export const MARKDOWN_MORE_SEPARATOR_INSERT_TOOL: MarkdownMoreSeparatorInsertToo
   placement: 'block'
 };
 
+export const MARKDOWN_LINK_CARD_INSERT_TOOL = {
+  label: '链接卡片',
+  icon: 'link-2',
+  text: '\n::link-card{url="https://example.com"}\n',
+  placement: 'block' as const
+};
+
 export const MARKDOWN_ABOUT_DIRECTIVE_INSERT_TOOLS: readonly MarkdownAboutDirectiveInsertTool[] = [
   {
     type: 'aboutDirective',

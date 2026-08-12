@@ -40,6 +40,7 @@ export const MARKDOWN_SYNTAX_EXAMPLES: readonly MarkdownSyntaxExample[] = [
   { label: '图片', icon: 'image', syntax: '![alt](url "图片描述")' },
   { label: '引用', icon: 'quote', syntax: '> 引用文本' },
   { label: '提示块', icon: 'message-square-text', syntax: ':::note[标题]' },
+  { label: '链接卡片', icon: 'link', syntax: '::link-card[标题]{url="https://..."}' },
   { label: '行内公式', icon: 'sigma', syntax: '$$x$$' },
   { label: '块级公式', icon: 'square-sigma', syntax: '$$\nx\n$$' },
   { label: '表情', icon: 'smile', syntax: '🙂' },

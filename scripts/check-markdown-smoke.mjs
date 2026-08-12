@@ -172,6 +172,31 @@ const checkGroups = [
         test: (html) => /<(img|picture)\b/i.test(getGalleryBlock(html))
       }
     ]
+  },
+  {
+    label: 'Link card check',
+    checks: [
+      {
+        id: 'link-card.wrapper',
+        test: (html) => /<a[^>]*\bclass="[^\"]*\blink-card\b/.test(html)
+      },
+      {
+        id: 'link-card.bilibili',
+        test: (html) => /class="[^\"]*\blink-card--bilibili\b/.test(html)
+      },
+      {
+        id: 'link-card.zhihu',
+        test: (html) => /class="[^\"]*\blink-card--zhihu\b/.test(html)
+      },
+      {
+        id: 'link-card.external-link',
+        test: (html) => /<a[^>]*\btarget="_blank"[^>]*\brel="nofollow noopener noreferrer"/.test(html)
+      },
+      {
+        id: 'link-card.title',
+        test: (html) => html.includes('一个 B 站视频')
+      }
+    ]
   }
 ];
 

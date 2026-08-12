@@ -82,6 +82,8 @@ const shouldShowMetaLine = articleMetaSettings.showDate
   description={description}
   image={ogImage}
   articleStructuredData={{
+    type: 'BlogPosting',
+    headline: entry.data.title,
     datePublished: (entry.data.publishedAt ?? entry.data.date).toISOString(),
     ...(updatedAt ? { dateModified: updatedAt.toISOString() } : {})
   }}

@@ -66,7 +66,15 @@ export const sanitizeSchema = {
       'data-lines',
       'data-state'
     ],
-    a: mergeAttrs(extendClassNameAttrs(getSchemaAttrs('a'), ['friend-card']), ['target', 'rel']),
+    a: mergeAttrs(extendClassNameAttrs(getSchemaAttrs('a'), [
+      'friend-card',
+      'link-card',
+      'link-card--bilibili',
+      'link-card--zhihu'
+    ]), [
+      'target',
+      'rel'
+    ]),
     h2: mergeAttrs(getSchemaAttrs('h2'), ['dataAdminOutlineKey', 'data-admin-outline-key']),
     h3: mergeAttrs(getSchemaAttrs('h3'), ['dataAdminOutlineKey', 'data-admin-outline-key']),
     img: mergeAttrs(getSchemaAttrs('img'), ['loading', 'decoding', 'width', 'height']),

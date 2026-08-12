@@ -15,6 +15,7 @@ import {
 import {
   MARKDOWN_ABOUT_DIRECTIVE_INSERT_TOOLS,
   MARKDOWN_DETAILS_INSERT_TOOL,
+  MARKDOWN_LINK_CARD_INSERT_TOOL,
   MARKDOWN_MATH_INSERT_TOOLS,
   MARKDOWN_MORE_SEPARATOR_INSERT_TOOL,
   type MarkdownAboutDirectiveInsertTool,
@@ -352,6 +353,15 @@ const openGalleryDialog = () => {
   onOpenGallery();
 };
 
+const applyLinkCardTool = () => {
+  if (busy) return;
+
+  onInsertText(
+    MARKDOWN_LINK_CARD_INSERT_TOOL.text,
+    MARKDOWN_LINK_CARD_INSERT_TOOL.placement
+  );
+};
+
 const applyAboutDirectiveTool = (tool: MarkdownAboutDirectiveInsertTool) => {
   if (busy) return;
 
@@ -559,6 +569,18 @@ $effect(() => {
           onclick={openGalleryDialog}
         >
           <AdminEditorIcon name={galleryTool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </button>
+      {/if}
+      {#if preset === 'full'}
+        <button
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          type="button"
+          data-tooltip={MARKDOWN_LINK_CARD_INSERT_TOOL.label}
+          aria-label={MARKDOWN_LINK_CARD_INSERT_TOOL.label}
+          disabled={busy}
+          onclick={applyLinkCardTool}
+        >
+          <AdminEditorIcon name={MARKDOWN_LINK_CARD_INSERT_TOOL.icon} size={toolbarIconSize} strokeWidth={2} />
         </button>
       {/if}
     </div>
