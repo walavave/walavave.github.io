@@ -36,6 +36,11 @@ const previewHost = '127.0.0.1';
 const ADMIN_BOOTSTRAP_XSS_SENTINEL = '__ADMIN_BOOTSTRAP_XSS_SENTINEL__';
 const ADMIN_BOOTSTRAP_BREAKOUT_PAYLOAD = `</script><script>window.${ADMIN_BOOTSTRAP_XSS_SENTINEL}=1</script>`;
 const ADMIN_CONTENT_LOCAL_DEV_NOTICE = '若需查看或编辑内容索引';
+const basePathSegment = String(process.env.ASTRO_WHONO_BASE_PATH ?? '')
+  .trim()
+  .replace(/^\/+|\/+$/g, '');
+const basePrefix = basePathSegment ? `/${basePathSegment}` : '';
+const withBasePath = (pathname) => `${basePrefix}${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
 
 const getRequestedPort = (envName, fallbackPort) => {
   const parsed = Number(process.env[envName] ?? String(fallbackPort));
@@ -43,7 +48,7 @@ const getRequestedPort = (envName, fallbackPort) => {
 };
 
 const request = async (baseUrl, pathname, init = {}) => {
-  const response = await fetch(`${baseUrl}${pathname}`, init);
+  const response = await fetch(`${baseUrl}${withBasePath(pathname)}`, init);
   const bodyText = await response.text();
   let bodyJson = null;
   try {
@@ -271,16 +276,6 @@ const assertReadonlyAdminDataShell = (label, response) => {
   assertNoAdminRouteNav(label, response.body);
   expect(!response.body.includes('data-admin-data-root'), `${label} should stay readonly outside dev`);
   expect(!response.body.includes('id="admin-data-bootstrap"'), `${label} should not emit data bootstrap payload outside dev`);
-};
-
-const assertReadonlyAdminChecksShell = (label, response) => {
-  expect(response.status === 200, `${label} returned ${response.status}`);
-  expect(
-    response.contentType.toLowerCase().includes('text/html'),
-    `${label} did not return HTML`
-  );
-  expect(response.body.includes('Checks Console'), `${label} is missing the Checks Console route heading`);
-  assertNoAdminRouteNav(label, response.body);
 };
 
 const assertReadonlyAdminImageShell = (label, response) => {
@@ -713,7 +708,7 @@ export const runPreviewAdminBoundaryCheck = async () => {
   const baseUrl = `http://${previewHost}:${previewPort}`;
 
   try {
-    await waitForHttpReady(`${baseUrl}/`);
+    await waitForHttpReady(`${baseUrl}${withBasePath('/')}`);
 
     const adminOverviewResponse = await request(baseUrl, '/admin/');
     const adminThemeResponse = await request(baseUrl, '/admin/theme/');
@@ -721,7 +716,6 @@ export const runPreviewAdminBoundaryCheck = async () => {
     const adminEssayContentEditResponse = await request(baseUrl, '/admin/content/essay/_edit/admin-console-guide/');
     const adminAboutContentEditResponse = await request(baseUrl, '/admin/content/about/_edit/index/');
     const adminImageResponse = await request(baseUrl, '/admin/images/');
-    const adminChecksResponse = await request(baseUrl, '/admin/checks/');
     const adminDataResponse = await request(baseUrl, '/admin/data/');
     const getResponse = await request(baseUrl, '/api/admin/settings/');
     const exportResponse = await request(baseUrl, '/api/admin/data/settings/');
@@ -875,7 +869,6 @@ export const runPreviewAdminBoundaryCheck = async () => {
     assertAdminContentEditStaticMissing('Preview GET /admin/content/essay/_edit/admin-console-guide/', adminEssayContentEditResponse);
     assertAdminContentEditStaticMissing('Preview GET /admin/content/about/_edit/index/', adminAboutContentEditResponse);
     assertReadonlyAdminImageShell('Preview GET /admin/images/', adminImageResponse);
-    assertReadonlyAdminChecksShell('Preview GET /admin/checks/', adminChecksResponse);
     assertReadonlyAdminDataShell('Preview GET /admin/data/', adminDataResponse);
     assertAdminSettingsStaticResponse('GET /api/admin/settings/', getResponse);
     assertAdminSettingsStaticResponse('GET /api/admin/data/settings/', exportResponse, '/api/admin/data/settings/');
@@ -941,7 +934,7 @@ export const runDevAdminSettingsSmokeCheck = async () => {
   });
 
   try {
-    await waitForHttpReady(`${baseUrl}/`, { attempts: 75, intervalMs: 200 });
+    await waitForHttpReady(`${baseUrl}${withBasePath('/')}`, { attempts: 75, intervalMs: 200 });
 
     const getResponse = await waitForJsonApiReady(baseUrl, '/api/admin/settings/');
     expect(getResponse.status === 200, `Dev GET /api/admin/settings/ returned ${getResponse.status}`);

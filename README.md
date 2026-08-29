@@ -153,7 +153,6 @@ npm run audit:prod
 | `/admin/` | 后台稳定入口与 Site Overview |
 | `/admin/theme/` | Theme Console，编辑站点信息、侧栏、首页与内页文案等 |
 | `/admin/images/` | 图片资源浏览与路径辅助 |
-| `/admin/checks/` | 结构化诊断与发布前自检 |
 | `/admin/data/` | settings 快照导出 / dry-run 导入 / 确认写入 |
 | `/admin/content/` | 随笔 / 絮语 / 小记 / 关于页的本地编辑、新建与源文件导出 |
 
@@ -169,14 +168,15 @@ npm run audit:prod
 
 ## 内容与写作
 
-### 内容与路由
+内容集合、源文件与公开入口如下，字段和写作细节见现有指南：
 
-内容集合（Content Collections）：
-- 随笔：位于 `src/content/essay` 目录
-- 絮语：位于 `src/content/bits` 目录
-- 小记：位于 `src/content/memo/index.md`
-- 关于：位于 `src/content/about/index.md`（固定单页）
-- 归档：由随笔集合按 `archive` 字段生成目录视图
+| 类型 | 源文件 | 主要入口 |
+| --- | --- | --- |
+| 随笔 | `src/content/essay/` | `/essay/`、`/archive/`、`/archive/[slug]/` |
+| 絮语 | `src/content/bits/` | `/bits/` |
+| 小记 | `src/content/memo/index.md` | `/memo/` |
+| 关于 | `src/content/about/index.md` | `/about/` |
+
 
 主要路由：
 - 列表页：`/archive/`、`/essay/`、`/bits/`、`/memo/`、`/about/`
@@ -193,6 +193,7 @@ npm run audit:prod
 - `/bits/` 默认头像：放 `public/author/**`，并填写实际文件路径，例如 `author/your-avatar.png`
 - 首页 Hero：支持 `src/assets/**`、`public/**` 和 `https://` 图片地址
 - 需要公共直链，或不希望经过 Astro 处理的图片：放 `public/**`
+- Admin Console 图片上传默认保存到本地，也可在开发环境配置 S3 兼容对象存储。Images Console 可浏览云端图片并复制 URL。
 
 ### 核心字段（Frontmatter）
 
@@ -261,6 +262,7 @@ Callout 示例：
 这里是正文……
 :::
 ```
+
 
 
 ## 字体与许可

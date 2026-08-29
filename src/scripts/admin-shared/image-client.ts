@@ -57,6 +57,7 @@ export const getAdminImageOriginLabel = (origin: AdminImageClientMeta['origin'])
   if (origin === 'public') return '公开资源';
   if (origin === 'src/assets') return '站点素材';
   if (origin === 'src/content') return '文章附件';
+  if (origin === 'cloud') return '云端资源';
   return '本地资源';
 };
 

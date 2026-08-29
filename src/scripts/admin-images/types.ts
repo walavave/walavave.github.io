@@ -15,14 +15,14 @@ export type AdminImageBrowseItem = {
   browseSubgroupLabel: string | null;
   preferredValue: string | null;
   previewSrc: string | null;
+  size: number | null;
+  mimeType: string | null;
 };
 
 export type AdminImageListItem = AdminImageBrowseItem & {
   value: string;
   width: number | null;
   height: number | null;
-  size: number | null;
-  mimeType: string | null;
 };
 
 export type AdminImageBootstrap = {

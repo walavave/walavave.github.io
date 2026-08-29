@@ -52,16 +52,20 @@ export const toBrowseItem = (item: AdminImageListItem): AdminImageBrowseItem => 
   browseSubgroup: item.browseSubgroup,
   browseSubgroupLabel: item.browseSubgroupLabel,
   preferredValue: item.preferredValue,
-  previewSrc: item.previewSrc
+  previewSrc: item.previewSrc,
+  size: item.size,
+  mimeType: item.mimeType
 });
 
-export const toCachedMeta = (item: AdminImageListItem): AdminImageClientMeta => ({
-  kind: 'local',
-  path: item.path,
-  value: item.value,
+export const toCachedMeta = (
+  item: AdminImageBrowseItem & Partial<Pick<AdminImageListItem, 'value' | 'width' | 'height'>>
+): AdminImageClientMeta => ({
+  kind: item.origin === 'cloud' ? 'remote' : 'local',
+  path: item.origin === 'cloud' ? null : item.path,
+  value: item.value ?? item.preferredValue ?? item.path,
   origin: item.origin,
-  width: item.width,
-  height: item.height,
+  width: item.width ?? null,
+  height: item.height ?? null,
   size: item.size,
   mimeType: item.mimeType,
   previewSrc: item.previewSrc
@@ -102,7 +106,9 @@ const isBrowseItem = (item: unknown): item is AdminImageBrowseItem =>
   && typeof item.browseSubgroup === 'string'
   && isNullableString(item.browseSubgroupLabel)
   && isNullableString(item.preferredValue)
-  && isNullableString(item.previewSrc);
+  && isNullableString(item.previewSrc)
+  && isNullableNumber(item.size)
+  && isNullableString(item.mimeType);
 
 const isListItem = (item: unknown): item is AdminImageListItem =>
   isRecord(item)

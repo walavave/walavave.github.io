@@ -11,6 +11,11 @@ import {
   readAdminLocalImageInspectionMeta
 } from './image-shared';
 import { getAdminImageFieldValue } from './image-params';
+import {
+  isAdminImageCloudStorageEnabled,
+  uploadAdminImageToCloudStorage
+} from './image-cloud-storage';
+import { AdminImageUploadError } from './image-upload-error';
 
 export type AdminImageUploadResult = {
   src: string;
@@ -22,15 +27,7 @@ export type AdminImageUploadResult = {
   mimeType: string | null;
 };
 
-export class AdminImageUploadError extends Error {
-  status: number;
-
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = 'AdminImageUploadError';
-    this.status = status;
-  }
-}
+export { AdminImageUploadError } from './image-upload-error';
 
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['.avif', '.gif', '.jpg', '.jpeg', '.png', '.svg', '.webp']);
 const WEBP_CONVERTIBLE_IMAGE_EXTENSIONS = new Set(['.avif', '.jpg', '.jpeg', '.png', '.webp']);
@@ -44,7 +41,7 @@ const toRelativeProjectPath = (filePath: string): string =>
 const normalizeFileBaseName = (value: string): string => {
   const normalized = value
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
@@ -74,6 +71,16 @@ const resolveUploadFileBaseName = (
   };
 };
 
+const getSafeImageFileName = (fileName: string): string => {
+  const extension = path.extname(fileName).toLowerCase();
+  if (!SUPPORTED_IMAGE_EXTENSIONS.has(extension)) {
+    throw new AdminImageUploadError('仅支持 avif / gif / jpg / jpeg / png / svg / webp 图片');
+  }
+
+  const baseName = normalizeFileBaseName(path.basename(fileName, path.extname(fileName)));
+  return `${baseName}${extension}`;
+};
+
 const assertUploadFile = (file: File): void => {
   if (file.size <= 0) {
     throw new AdminImageUploadError('图片文件为空，请重新选择');
@@ -93,21 +100,21 @@ const resolveMarkdownBodyUploadDirectory = (sourcePath: string): string => {
   const parsed = path.parse(sourcePath);
   return parsed.name === 'index'
     ? path.join(parsed.dir, 'assets')
-    : path.join(parsed.dir, `${parsed.name}-assets`);
+    : path.join(parsed.dir, parsed.name + '-assets');
 };
 
 const resolveBitsUploadDirectory = (): string => path.join(getProjectRoot(), 'public', 'bits');
 
 const toMarkdownRelativeImageSrc = (sourcePath: string, assetPath: string): string => {
   const relative = path.relative(path.dirname(sourcePath), assetPath).replace(/\\/g, '/');
-  return relative.startsWith('.') ? relative : `./${relative}`;
+  return relative.startsWith('.') ? relative : './' + relative;
 };
 
 const createCandidateFileName = (safeFileName: string, index: number): string => {
   if (index <= 1) return safeFileName;
   const extension = path.extname(safeFileName);
   const baseName = safeFileName.slice(0, -extension.length);
-  return `${baseName}-${index}${extension}`;
+  return baseName + '-' + index + extension;
 };
 
 const writeUniqueImageFile = async (
@@ -163,8 +170,68 @@ const convertUploadImage = async (
       buffer: convertedBuffer
     };
   } catch {
-    throw new AdminImageUploadError('图片转为 WebP 失败，请换一张图片或稍后重试', 500);
+    return {
+      fileName: baseName + originalExtension,
+      buffer
+    };
   }
+};
+
+const assertContentEntryCanReceiveImage = (collection: 'essay' | 'bits' | 'memo', entryId: string): string => {
+  try {
+    return resolveAdminContentEntrySourcePath(collection, entryId);
+  } catch (error) {
+    if (error instanceof AdminContentEntryResolutionError) {
+      throw new AdminImageUploadError(error.message, error.code === 'source-not-found' ? 404 : 400);
+    }
+    throw error;
+  }
+};
+
+const uploadAdminCloudImage = async ({
+  collection,
+  entryId,
+  file,
+  safeFileName,
+  buffer
+}: {
+  collection: 'essay' | 'bits' | 'memo';
+  entryId: string;
+  file: File;
+  safeFileName: string;
+  buffer: Buffer;
+}): Promise<AdminImageUploadResult> => {
+  const mimeType = file.type.trim() || getMimeTypeFromFileName(safeFileName);
+  const cloudResult = await uploadAdminImageToCloudStorage({
+    collection,
+    entryId,
+    fileName: safeFileName,
+    buffer,
+    mimeType
+  });
+
+  invalidateAdminImageCaches();
+
+  return {
+    src: cloudResult.url,
+    path: cloudResult.key,
+    fileName: path.basename(cloudResult.key),
+    width: null,
+    height: null,
+    size: file.size,
+    mimeType
+  };
+};
+
+const getMimeTypeFromFileName = (fileName: string): string | null => {
+  const extension = path.extname(fileName).toLowerCase();
+  if (extension === '.avif') return 'image/avif';
+  if (extension === '.gif') return 'image/gif';
+  if (extension === '.jpeg' || extension === '.jpg') return 'image/jpeg';
+  if (extension === '.png') return 'image/png';
+  if (extension === '.svg') return 'image/svg+xml';
+  if (extension === '.webp') return 'image/webp';
+  return null;
 };
 
 export const uploadAdminMarkdownBodyImage = async ({
@@ -180,17 +247,14 @@ export const uploadAdminMarkdownBodyImage = async ({
 }): Promise<AdminImageUploadResult> => {
   assertUploadFile(file);
 
-  let sourcePath: string;
-  try {
-    sourcePath = resolveAdminContentEntrySourcePath(collection, entryId);
-  } catch (error) {
-    if (error instanceof AdminContentEntryResolutionError) {
-      throw new AdminImageUploadError(error.message, error.code === 'source-not-found' ? 404 : 400);
-    }
-    throw error;
+  const sourcePath = assertContentEntryCanReceiveImage(collection, entryId);
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (isAdminImageCloudStorageEnabled()) {
+    const safeFileName = getSafeImageFileName(file.name);
+    return uploadAdminCloudImage({ collection, entryId, file, safeFileName, buffer });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   const preparedUpload = await convertUploadImage(file, buffer, fileName);
   const assetPath = await writeUniqueImageFile(
     resolveMarkdownBodyUploadDirectory(sourcePath),
@@ -257,16 +321,15 @@ export const uploadAdminBitsImage = async ({
 }): Promise<AdminImageUploadResult> => {
   assertUploadFile(file);
 
-  try {
-    resolveAdminContentEntrySourcePath('bits', entryId);
-  } catch (error) {
-    if (error instanceof AdminContentEntryResolutionError) {
-      throw new AdminImageUploadError(error.message, error.code === 'source-not-found' ? 404 : 400);
-    }
-    throw error;
-  }
+  assertContentEntryCanReceiveImage('bits', entryId);
 
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (isAdminImageCloudStorageEnabled()) {
+    const safeFileName = getSafeImageFileName(file.name);
+    return uploadAdminCloudImage({ collection: 'bits', entryId, file, safeFileName, buffer });
+  }
+
   const preparedUpload = await convertUploadImage(file, buffer, fileName);
   const assetPath = await writeUniqueImageFile(resolveBitsUploadDirectory(), preparedUpload.fileName, preparedUpload.buffer);
   const relativePath = toRelativeProjectPath(assetPath);

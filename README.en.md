@@ -152,7 +152,6 @@ Run `npm run dev`, then open `http://localhost:4321/admin/` (replace `4321` with
 | `/admin/` | Stable Admin entry and Site Overview |
 | `/admin/theme/` | Theme Console for editing site information, sidebar, home page, inner-page copy, and more |
 | `/admin/images/` | Image resource browser and path helper |
-| `/admin/checks/` | Structured diagnostics and pre-release checks |
 | `/admin/data/` | Settings snapshot export / dry-run import / confirmed write |
 | `/admin/content/` | Local editing, draft creation, and source export for essay / bits / memo / about |
 
@@ -168,14 +167,15 @@ Production builds remain static output: `/admin/` can show a read-only public Ov
 
 ## Content and Writing
 
-### Collections and Routes
+Content collections, source locations, and public entry points:
 
-Content Collections:
-- Essay: `src/content/essay`
-- Bits: `src/content/bits`
-- Memo: `src/content/memo/index.md`
-- About: `src/content/about/index.md` (fixed single page)
-- Archive: generated from essay entries via the `archive` field
+| Type | Source | Main routes |
+| --- | --- | --- |
+| Essay | `src/content/essay/` | `/essay/`, `/archive/`, `/archive/[slug]/` |
+| Bits | `src/content/bits/` | `/bits/` |
+| Memo | `src/content/memo/index.md` | `/memo/` |
+| About | `src/content/about/index.md` | `/about/` |
+
 
 Main routes:
 - List pages: `/archive/`, `/essay/`, `/bits/`, `/memo/`, `/about/`
@@ -188,6 +188,7 @@ Main routes:
 - Default avatar for `/bits/`: place it under `public/author/**` and use the actual file path, for example `author/your-avatar.png`
 - Home Hero: supports `src/assets/**`, `public/**`, and `https://` image URLs
 - If you need a public direct URL, or do not want Astro to process the asset, place it under `public/**`
+- Admin Console image uploads are saved locally by default, with optional S3-compatible object storage available in development. Images Console can browse cloud images and copy their URLs.
 
 
 ### Core Frontmatter Fields
@@ -257,6 +258,7 @@ Callout example:
 Body text goes here...
 :::
 ```
+
 
 
 ## Fonts and Licensing

@@ -1,7 +1,48 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+const fsPromisesMock = vi.hoisted(() => ({
+  stat: vi.fn()
+}));
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  fsPromisesMock.stat.mockImplementation(actual.stat);
+  return {
+    ...actual,
+    stat: fsPromisesMock.stat
+  };
+});
+
+const s3SdkMock = vi.hoisted(() => ({
+  clientConfigs: [] as Record<string, unknown>[],
+  send: vi.fn(),
+  paginateListObjectsV2: vi.fn()
+}));
+
+vi.mock('@aws-sdk/client-s3', () => {
+  class S3Client {
+    constructor(readonly config: Record<string, unknown>) {
+      s3SdkMock.clientConfigs.push(config);
+    }
+
+    send(command: unknown, options?: unknown): Promise<unknown> {
+      return s3SdkMock.send(command, options);
+    }
+  }
+
+  class PutObjectCommand {
+    constructor(readonly input: Record<string, unknown>) {}
+  }
+
+  return {
+    S3Client,
+    PutObjectCommand,
+    paginateListObjectsV2: s3SdkMock.paginateListObjectsV2
+  };
+});
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0ioAAAAASUVORK5CYII=',
@@ -17,10 +58,58 @@ const createUploadRequest = (url: string, formData: FormData) =>
     body: formData
   });
 
+const createJsonWriteRequest = (url: string, body: unknown) =>
+  new Request(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: new URL(url).origin
+    },
+    body: JSON.stringify(body)
+  });
+
+const createS3Paginator = (pages: Record<string, unknown>[]) => (async function* () {
+  for (const page of pages) yield page;
+})();
+
+const configureS3TestEnv = ({
+  prefix = 'uploads',
+  forcePathStyle,
+  sessionToken,
+  publicBaseUrl = 'https://cdn.example.test'
+}: {
+  prefix?: string;
+  forcePathStyle?: boolean;
+  sessionToken?: string;
+  publicBaseUrl?: string;
+} = {}): void => {
+  process.env.ASTRO_WHONO_IMAGE_STORAGE = 's3';
+  process.env.ASTRO_WHONO_S3_ENDPOINT = 'https://s3.example.test';
+  process.env.ASTRO_WHONO_S3_REGION = 'auto';
+  process.env.ASTRO_WHONO_S3_BUCKET = 'site-images';
+  process.env.ASTRO_WHONO_S3_ACCESS_KEY_ID = 'test-access-key';
+  process.env.ASTRO_WHONO_S3_SECRET_ACCESS_KEY = 'test-secret-key';
+  process.env.ASTRO_WHONO_S3_PUBLIC_BASE_URL = publicBaseUrl;
+  process.env.ASTRO_WHONO_S3_PREFIX = prefix;
+  if (forcePathStyle !== undefined) {
+    process.env.ASTRO_WHONO_S3_FORCE_PATH_STYLE = String(forcePathStyle);
+  }
+  if (sessionToken) {
+    process.env.ASTRO_WHONO_S3_SESSION_TOKEN = sessionToken;
+  }
+};
+
 describe('admin images api', () => {
   let tempRoot = '';
 
   beforeEach(async () => {
+    fsPromisesMock.stat.mockClear();
+    s3SdkMock.clientConfigs.length = 0;
+    s3SdkMock.send.mockReset();
+    s3SdkMock.send.mockResolvedValue({});
+    s3SdkMock.paginateListObjectsV2.mockReset();
+    s3SdkMock.paginateListObjectsV2.mockImplementation(() => createS3Paginator([]));
+
     tempRoot = await mkdtemp(path.join(tmpdir(), 'astro-whono-images-api-'));
     process.env.ASTRO_WHONO_INTERNAL_TEST_PROJECT_ROOT = tempRoot;
 
@@ -64,7 +153,20 @@ describe('admin images api', () => {
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     delete process.env.ASTRO_WHONO_INTERNAL_TEST_PROJECT_ROOT;
+    delete process.env.ASTRO_WHONO_IMAGE_STORAGE;
+    delete process.env.ASTRO_WHONO_S3_ENDPOINT;
+    delete process.env.ASTRO_WHONO_S3_REGION;
+    delete process.env.ASTRO_WHONO_S3_BUCKET;
+    delete process.env.ASTRO_WHONO_S3_ACCESS_KEY_ID;
+    delete process.env.ASTRO_WHONO_S3_SECRET_ACCESS_KEY;
+    delete process.env.ASTRO_WHONO_S3_SESSION_TOKEN;
+    delete process.env.ASTRO_WHONO_S3_FORCE_PATH_STYLE;
+    delete process.env.ASTRO_WHONO_S3_PUBLIC_BASE_URL;
+    delete process.env.ASTRO_WHONO_S3_PREFIX;
+    vi.unstubAllGlobals();
     try {
       const imageShared = await import('../src/lib/admin-console/image-shared');
       imageShared.invalidateAdminImageCaches();
@@ -121,6 +223,254 @@ describe('admin images api', () => {
         })
       ])
     );
+  });
+
+  it('includes configured cloud images in browse mode alongside local images', async () => {
+    configureS3TestEnv();
+    s3SdkMock.paginateListObjectsV2.mockReturnValue(createS3Paginator([
+      {
+        Contents: [
+          {
+            Key: 'uploads/essay/guide/cloud-shot.webp',
+            LastModified: new Date('2026-07-11T02:00:00.000Z'),
+            Size: 2048
+          },
+          {
+            Key: 'uploads/essay/guide/space 雪#hash?query%.png',
+            Size: 512
+          },
+          {
+            Key: 'uploads/essay/guide/readme.txt',
+            Size: 10
+          }
+        ],
+        IsTruncated: true,
+        NextContinuationToken: 'page-2'
+      },
+      {
+        Contents: [
+          {
+            Key: 'uploads/bits/demo/cloud-cover.png',
+            LastModified: new Date('2026-07-12T02:00:00.000Z'),
+            Size: 4
+          },
+          { Key: 'uploads/bits/demo/' }
+        ],
+        IsTruncated: false
+      }
+    ]));
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.ok).toBe(true);
+    expect(payload.result.groupOptions).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          value: 'cloud'
+        })
+      ])
+    );
+    expect(payload.result.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'https://cdn.example.test/uploads/essay/guide/cloud-shot.webp',
+          value: 'https://cdn.example.test/uploads/essay/guide/cloud-shot.webp',
+          origin: 'cloud',
+          browseGroup: 'cloud',
+          browseGroupLabel: '云端图片',
+          fileName: 'cloud-shot.webp',
+          size: 2048,
+          mimeType: 'image/png',
+          previewSrc: 'https://cdn.example.test/uploads/essay/guide/cloud-shot.webp'
+        }),
+        expect.objectContaining({
+          path: 'https://cdn.example.test/uploads/bits/demo/cloud-cover.png',
+          origin: 'cloud',
+          size: 4,
+          mimeType: 'image/png'
+        }),
+        expect.objectContaining({
+          path: 'https://cdn.example.test/uploads/essay/guide/space%20%E9%9B%AA%23hash%3Fquery%25.png',
+          origin: 'cloud',
+          size: 512,
+          mimeType: 'image/png'
+        }),
+        expect.objectContaining({
+          origin: 'public',
+          path: 'public/bits/demo.png'
+        })
+      ])
+    );
+    expect(s3SdkMock.paginateListObjectsV2).toHaveBeenCalledTimes(1);
+    expect(s3SdkMock.paginateListObjectsV2.mock.calls[0]?.[1]).toEqual({
+      Bucket: 'site-images',
+      Prefix: 'uploads/'
+    });
+    expect(s3SdkMock.paginateListObjectsV2.mock.calls[0]?.[2]).toEqual({
+      abortSignal: expect.any(AbortSignal)
+    });
+    expect(s3SdkMock.clientConfigs[0]).toEqual(expect.objectContaining({
+      endpoint: 'https://s3.example.test',
+      forcePathStyle: true,
+      region: 'auto',
+      credentials: {
+        accessKeyId: 'test-access-key',
+        secretAccessKey: 'test-secret-key'
+      }
+    }));
+  });
+
+  it('preserves the public base pathname when appending encoded cloud keys', async () => {
+    configureS3TestEnv({ publicBaseUrl: 'https://cdn.example.test/media%40images///' });
+    s3SdkMock.paginateListObjectsV2.mockReturnValue(createS3Paginator([{
+      Contents: [{
+        Key: 'uploads/essay/guide/space 雪#hash?query%.png',
+        Size: 512
+      }]
+    }]));
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.result.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: 'https://cdn.example.test/media%40images/uploads/essay/guide/space%20%E9%9B%AA%23hash%3Fquery%25.png',
+        value: 'https://cdn.example.test/media%40images/uploads/essay/guide/space%20%E9%9B%AA%23hash%3Fquery%25.png'
+      })
+    ]));
+  });
+
+  it('hides non-managed cloud objects when the storage prefix is empty', async () => {
+    configureS3TestEnv({ prefix: '' });
+    s3SdkMock.paginateListObjectsV2.mockReturnValue(createS3Paginator([{
+      Contents: [
+        { Key: 'essay/guide/cloud-shot.webp', Size: 2048 },
+        { Key: 'bits/demo/cloud-cover.png', Size: 4 },
+        { Key: 'other/not-managed.png', Size: 8 },
+        { Key: 'bucket-root.png', Size: 16 }
+      ]
+    }]));
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.result.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        origin: 'cloud',
+        path: 'https://cdn.example.test/essay/guide/cloud-shot.webp'
+      }),
+      expect.objectContaining({
+        origin: 'cloud',
+        path: 'https://cdn.example.test/bits/demo/cloud-cover.png'
+      })
+    ]));
+    expect(payload.result.items).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'https://cdn.example.test/other/not-managed.png' }),
+      expect.objectContaining({ path: 'https://cdn.example.test/bucket-root.png' })
+    ]));
+  });
+
+  it('returns a visible error when cloud listing fails', async () => {
+    configureS3TestEnv();
+    s3SdkMock.paginateListObjectsV2.mockReturnValue((async function* () {
+      throw new Error('S3 unavailable');
+    })());
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(502);
+    const payload = JSON.parse(await response.text());
+    expect(payload).toEqual(expect.objectContaining({
+      ok: false,
+      errors: ['云端图片操作失败，请查看服务端日志'],
+      error: expect.objectContaining({
+        code: 'cloud_unknown',
+        outcome: 'failed_known',
+        traceId: expect.any(String)
+      })
+    }));
+  });
+
+  it('requires an explicit region for native AWS S3 when endpoint is omitted', async () => {
+    configureS3TestEnv();
+    delete process.env.ASTRO_WHONO_S3_ENDPOINT;
+    delete process.env.ASTRO_WHONO_S3_REGION;
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(await response.text())).toEqual(expect.objectContaining({
+      ok: false,
+      errors: ['云端图片存储配置无效，请检查服务端配置'],
+      error: expect.objectContaining({ code: 'cloud_config_invalid', traceId: expect.any(String) })
+    }));
+    expect(s3SdkMock.paginateListObjectsV2).not.toHaveBeenCalled();
+  });
+
+  it('rejects auto as the native AWS S3 region when endpoint is omitted', async () => {
+    configureS3TestEnv();
+    delete process.env.ASTRO_WHONO_S3_ENDPOINT;
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(await response.text())).toEqual(expect.objectContaining({
+      ok: false,
+      errors: ['云端图片存储配置无效，请检查服务端配置'],
+      error: expect.objectContaining({ code: 'cloud_config_invalid', traceId: expect.any(String) })
+    }));
+    expect(s3SdkMock.paginateListObjectsV2).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'http://cdn.example.test',
+    'not-a-url',
+    'https://user:password@cdn.example.test/media',
+    'https://@cdn.example.test/media',
+    'https://:@cdn.example.test/media',
+    'https://cdn.example.test/media?token=abc',
+    'https://cdn.example.test/media?',
+    'https://cdn.example.test/media#fragment',
+    'https://cdn.example.test/media#'
+  ])('requires an HTTPS public base URL for cloud storage (%s)', async (publicBaseUrl) => {
+    configureS3TestEnv();
+    process.env.ASTRO_WHONO_S3_PUBLIC_BASE_URL = publicBaseUrl;
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?group=all&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(await response.text())).toEqual(expect.objectContaining({
+      ok: false,
+      errors: ['云端图片存储配置无效，请检查服务端配置'],
+      error: expect.objectContaining({ code: 'cloud_config_invalid', traceId: expect.any(String) })
+    }));
+    expect(s3SdkMock.paginateListObjectsV2).not.toHaveBeenCalled();
   });
 
   it('filters content attachments by owner and resolves relative asset references', async () => {
@@ -265,15 +615,15 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: './guide-assets/hero-shot.webp',
-        path: 'src/content/essay/guide-assets/hero-shot.webp',
-        fileName: 'hero-shot.webp',
+        src: './guide-assets/hero-shot.png',
+        path: 'src/content/essay/guide-assets/hero-shot.png',
+        fileName: 'hero-shot.png',
         width: 1,
         height: 1,
-        mimeType: 'image/webp'
+        mimeType: 'image/png'
       })
     );
-    await expect(readFile(path.join(tempRoot, 'src', 'content', 'essay', 'guide-assets', 'hero-shot.webp'))).resolves.toBeInstanceOf(Buffer);
+    await expect(readFile(path.join(tempRoot, 'src', 'content', 'essay', 'guide-assets', 'hero-shot.png'))).resolves.toBeInstanceOf(Buffer);
   });
 
   it('keeps uploads non-blocking by auto-renaming conflicts', async () => {
@@ -293,8 +643,8 @@ describe('admin images api', () => {
     expect(response.status).toBe(200);
     const payload = JSON.parse(await response.text());
     expect(payload.ok).toBe(true);
-    expect(payload.result.src).toBe('./guide-assets/hero-2.webp');
-    await expect(readFile(path.join(tempRoot, 'src', 'content', 'essay', 'guide-assets', 'hero-2.webp'))).resolves.toBeInstanceOf(Buffer);
+    expect(payload.result.src).toBe('./guide-assets/hero-2.png');
+    await expect(readFile(path.join(tempRoot, 'src', 'content', 'essay', 'guide-assets', 'hero-2.png'))).resolves.toBeInstanceOf(Buffer);
   });
 
   it('accepts a custom upload file name and still normalizes it to webp', async () => {
@@ -315,10 +665,10 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: './guide-assets/my-custom-cover.webp',
-        path: 'src/content/essay/guide-assets/my-custom-cover.webp',
-        fileName: 'my-custom-cover.webp',
-        mimeType: 'image/webp'
+        src: './guide-assets/my-custom-cover.png',
+        path: 'src/content/essay/guide-assets/my-custom-cover.png',
+        fileName: 'my-custom-cover.png',
+        mimeType: 'image/png'
       })
     );
   });
@@ -340,15 +690,15 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: 'bits/bit-cover.webp',
-        path: 'public/bits/bit-cover.webp',
-        fileName: 'bit-cover.webp',
+        src: 'bits/bit-cover.png',
+        path: 'public/bits/bit-cover.png',
+        fileName: 'bit-cover.png',
         width: 1,
         height: 1,
-        mimeType: 'image/webp'
+        mimeType: 'image/png'
       })
     );
-    await expect(readFile(path.join(tempRoot, 'public', 'bits', 'bit-cover.webp'))).resolves.toBeInstanceOf(Buffer);
+    await expect(readFile(path.join(tempRoot, 'public', 'bits', 'bit-cover.png'))).resolves.toBeInstanceOf(Buffer);
   });
 
   it('accepts a custom bits upload file name', async () => {
@@ -369,12 +719,201 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: 'bits/feed-banner.webp',
-        path: 'public/bits/feed-banner.webp',
-        fileName: 'feed-banner.webp',
-        mimeType: 'image/webp'
+        src: 'bits/feed-banner.png',
+        path: 'public/bits/feed-banner.png',
+        fileName: 'feed-banner.png',
+        mimeType: 'image/png'
       })
     );
+  });
+
+  it('uploads images to configured S3-compatible cloud storage and returns a public url', async () => {
+    configureS3TestEnv({ prefix: 'blog', forcePathStyle: false, sessionToken: 'test-session-token' });
+
+    const { POST } = await import('../src/pages/api/admin/images/upload');
+    const formData = new FormData();
+    formData.set('collection', 'bits');
+    formData.set('entryId', 'demo');
+    formData.set('image', new File([PNG_1X1], 'Cloud Cover.PNG', { type: 'image/png' }));
+
+    const response = await POST({
+      request: createUploadRequest('http://127.0.0.1:4321/api/admin/images/upload', formData),
+      url: new URL('http://127.0.0.1:4321/api/admin/images/upload')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.ok).toBe(true);
+    expect(payload.result).toEqual(
+      expect.objectContaining({
+        src: expect.stringMatching(/^https:\/\/cdn\.example\.test\/blog\/bits\/demo\/cloud-cover-[0-9a-f-]+\.png$/),
+        path: expect.stringMatching(/^blog\/bits\/demo\/cloud-cover-[0-9a-f-]+\.png$/),
+        fileName: expect.stringMatching(/^cloud-cover-[0-9a-f-]+\.png$/),
+        width: null,
+        height: null,
+        size: PNG_1X1.length,
+        mimeType: 'image/png'
+      })
+    );
+    expect(s3SdkMock.send).toHaveBeenCalledTimes(1);
+    const uploadCommand = s3SdkMock.send.mock.calls[0]?.[0] as {
+      constructor: { name: string };
+      input: Record<string, unknown>;
+    };
+    expect(uploadCommand.constructor.name).toBe('PutObjectCommand');
+    expect(uploadCommand.input).toEqual({
+      Bucket: 'site-images',
+      Key: expect.stringMatching(/^blog\/bits\/demo\/cloud-cover-[0-9a-f-]+\.png$/),
+      Body: PNG_1X1,
+      ContentType: 'image/png'
+    });
+    expect(s3SdkMock.send.mock.calls[0]?.[1]).toEqual({
+      abortSignal: expect.any(AbortSignal)
+    });
+    expect(s3SdkMock.clientConfigs[0]).toEqual(expect.objectContaining({
+      region: 'auto',
+      endpoint: 'https://s3.example.test',
+      forcePathStyle: false,
+      maxAttempts: 2,
+      credentials: {
+        accessKeyId: 'test-access-key',
+        secretAccessKey: 'test-secret-key',
+        sessionToken: 'test-session-token'
+      }
+    }));
+    await expect(readFile(path.join(tempRoot, 'public', 'bits', 'cloud-cover.png'))).rejects.toThrow();
+  });
+
+  it('returns a structured 502 response when cloud upload fails', async () => {
+    configureS3TestEnv();
+    s3SdkMock.send.mockRejectedValueOnce(new Error('S3 upload unavailable'));
+
+    const { POST } = await import('../src/pages/api/admin/images/upload');
+    const formData = new FormData();
+    formData.set('collection', 'bits');
+    formData.set('entryId', 'demo');
+    formData.set('image', new File([PNG_1X1], 'Cloud Failure.PNG', { type: 'image/png' }));
+
+    const response = await POST({
+      request: createUploadRequest('http://127.0.0.1:4321/api/admin/images/upload', formData),
+      url: new URL('http://127.0.0.1:4321/api/admin/images/upload')
+    } as never);
+
+    expect(response.status).toBe(502);
+    expect(JSON.parse(await response.text())).toEqual(expect.objectContaining({
+      ok: false,
+      errors: ['云端图片操作失败，请查看服务端日志'],
+      error: expect.objectContaining({ code: 'cloud_unknown', outcome: 'failed_known', traceId: expect.any(String) })
+    }));
+  });
+
+  it('redacts provider network errors and marks an upload outcome as unknown', async () => {
+    configureS3TestEnv();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    s3SdkMock.send.mockRejectedValueOnce(Object.assign(
+      new Error('signed endpoint https://s3.example.test/?credential=secret'),
+      { code: 'ECONNRESET', $metadata: { requestId: 'provider-request-id' } }
+    ));
+
+    const { POST } = await import('../src/pages/api/admin/images/upload');
+    const formData = new FormData();
+    formData.set('collection', 'bits');
+    formData.set('entryId', 'demo');
+    formData.set('image', new File([PNG_1X1], 'Network Failure.PNG', { type: 'image/png' }));
+
+    const response = await POST({
+      request: createUploadRequest('http://127.0.0.1:4321/api/admin/images/upload', formData),
+      url: new URL('http://127.0.0.1:4321/api/admin/images/upload')
+    } as never);
+    const responseText = await response.text();
+    const payload = JSON.parse(responseText);
+
+    expect(response.status).toBe(502);
+    expect(responseText).not.toContain('credential=secret');
+    expect(responseText).not.toContain('provider-request-id');
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain('credential=secret');
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain('signed endpoint');
+    expect(payload.error).toEqual(expect.objectContaining({
+      code: 'cloud_provider_unavailable',
+      outcome: 'unknown_may_have_succeeded',
+      traceId: expect.any(String)
+    }));
+    consoleError.mockRestore();
+  });
+
+  it('aborts a cloud upload at the operation deadline', async () => {
+    vi.useFakeTimers();
+    configureS3TestEnv();
+    s3SdkMock.send.mockReturnValueOnce(new Promise(() => undefined));
+
+    const { POST } = await import('../src/pages/api/admin/images/upload');
+    const formData = new FormData();
+    formData.set('collection', 'bits');
+    formData.set('entryId', 'demo');
+    formData.set('image', new File([PNG_1X1], 'Timeout.PNG', { type: 'image/png' }));
+    const responsePromise = POST({
+      request: createUploadRequest('http://127.0.0.1:4321/api/admin/images/upload', formData),
+      url: new URL('http://127.0.0.1:4321/api/admin/images/upload')
+    } as never);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    const response = await responsePromise;
+    const payload = JSON.parse(await response.text());
+
+    expect(response.status).toBe(504);
+    expect(payload.error).toEqual(expect.objectContaining({
+      code: 'cloud_timeout',
+      outcome: 'unknown_may_have_succeeded'
+    }));
+  });
+
+  it('persists a cloud Bits upload through the existing optional-dimensions contract', async () => {
+    configureS3TestEnv({ prefix: 'blog', forcePathStyle: false });
+
+    const { POST: upload } = await import('../src/pages/api/admin/images/upload');
+    const formData = new FormData();
+    formData.set('collection', 'bits');
+    formData.set('entryId', 'demo');
+    formData.set('image', new File([PNG_1X1], 'Cloud Bits.PNG', { type: 'image/png' }));
+
+    const uploadResponse = await upload({
+      request: createUploadRequest('http://127.0.0.1:4321/api/admin/images/upload', formData),
+      url: new URL('http://127.0.0.1:4321/api/admin/images/upload')
+    } as never);
+    expect(uploadResponse.status).toBe(200);
+    const uploadPayload = JSON.parse(await uploadResponse.text());
+    expect(uploadPayload.result).toEqual(expect.objectContaining({
+      src: expect.stringMatching(/^https:\/\/cdn\.example\.test\/blog\/bits\/demo\/cloud-bits-/),
+      width: null,
+      height: null
+    }));
+
+    const { readAdminContentEntryEditorPayload } = await import('../src/lib/admin-console/content-shared');
+    const { POST: save } = await import('../src/pages/api/admin/content/entry');
+    const current = await readAdminContentEntryEditorPayload('bits', 'demo');
+    const nextValues = {
+      ...current.values,
+      imagesText: JSON.stringify([{ src: uploadPayload.result.src }])
+    };
+    const saveResponse = await save({
+      request: createJsonWriteRequest('http://127.0.0.1:4321/api/admin/content/entry', {
+        collection: 'bits',
+        entryId: 'demo',
+        revision: current.revision,
+        frontmatter: nextValues,
+        body: current.bodyText
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry')
+    } as never);
+
+    expect(saveResponse.status).toBe(200);
+    const savePayload = JSON.parse(await saveResponse.text());
+    expect(savePayload.ok).toBe(true);
+    expect(savePayload.result.changedFields).toContain('images');
+    const savedBits = await readFile(path.join(tempRoot, 'src', 'content', 'bits', 'demo.md'), 'utf8');
+    expect(savedBits).toContain(`src: ${uploadPayload.result.src}`);
+    expect(savedBits).not.toContain('width:');
+    expect(savedBits).not.toContain('height:');
   });
 
   it('uploads memo body images next to the fixed memo source file', async () => {
@@ -399,7 +938,7 @@ describe('admin images api', () => {
         fileName: 'memo-shot.webp',
         width: 1,
         height: 1,
-        mimeType: 'image/webp'
+        mimeType: 'image/png'
       })
     );
     await expect(readFile(path.join(tempRoot, 'src', 'content', 'memo', 'assets', 'memo-shot.webp'))).resolves.toBeInstanceOf(Buffer);
@@ -572,6 +1111,32 @@ describe('admin images api', () => {
       'public/images/archive/cover.png',
       'public/bits/demo.png'
     ]);
+  });
+
+  it('uses one browse snapshot and cloud lastModified for recent scope', async () => {
+    configureS3TestEnv();
+    s3SdkMock.paginateListObjectsV2.mockReturnValue(createS3Paginator([{
+      Contents: [{
+        Key: 'uploads/essay/guide/cloud-recent.png',
+        LastModified: new Date('2099-01-01T00:00:00.000Z'),
+        Size: 12
+      }]
+    }]));
+
+    const { GET } = await import('../src/pages/api/admin/images/list');
+    const response = await GET({
+      url: new URL('http://127.0.0.1:4321/api/admin/images/list?scope=recent&page=1&limit=60')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.result.items[0]).toEqual(expect.objectContaining({
+      path: 'https://cdn.example.test/uploads/essay/guide/cloud-recent.png',
+      origin: 'cloud',
+      size: 12
+    }));
+    expect(s3SdkMock.paginateListObjectsV2).toHaveBeenCalledTimes(1);
+    expect(fsPromisesMock.stat.mock.calls.some(([target]) => String(target).includes('cdn.example.test'))).toBe(false);
   });
 
 });

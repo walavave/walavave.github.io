@@ -158,7 +158,7 @@ export const initAdminImagesConsole = () => {
     return;
   }
 
-  const hasLocalBrowse = Array.isArray(bootstrap.browseIndex);
+  let hasLocalBrowse = Array.isArray(bootstrap.browseIndex);
   let busy = false;
   let requestToken = 0;
   let currentTotalPages = 1;
@@ -239,13 +239,17 @@ export const initAdminImagesConsole = () => {
     currentState.scope === DEFAULT_SCOPE
     && (currentState.group !== DEFAULT_GROUP || currentState.subgroup.trim().length > 0);
 
+  const withoutCloudGroupOption = (options: readonly AdminImageFilterOption[]): AdminImageFilterOption[] =>
+    options.filter((option) => option.value !== 'cloud');
+
   const renderCurrentItems = () => {
     renderItems({
       resultListEl,
       emptyEl,
       items: currentItems,
       selectedPath,
-      detailMetaCache
+      detailMetaCache,
+      scope: currentState.scope
     });
   };
 
@@ -576,7 +580,7 @@ export const initAdminImagesConsole = () => {
   };
 
   const applyBrowseState = async ({ updateLocation }: { updateLocation: boolean }) => {
-    if (!bootstrap.browseIndex) return;
+    if (!hasLocalBrowse || !bootstrap.browseIndex) return;
 
     const browsePage = resolveAdminImageBrowsePage({
       items: bootstrap.browseIndex,
@@ -585,6 +589,12 @@ export const initAdminImagesConsole = () => {
       query: currentState.query,
       page: currentState.page,
       limit: getCurrentPageSize()
+    });
+
+    browsePage.items.forEach((item) => {
+      if (item.origin === 'cloud') {
+        detailMetaCache.set(item.path, toCachedMeta(item));
+      }
     });
 
     await applyResolvedLocalState({
@@ -596,7 +606,7 @@ export const initAdminImagesConsole = () => {
         page: browsePage.page
       },
       items: browsePage.items,
-      groupOptions: browsePage.groupOptions,
+      groupOptions: withoutCloudGroupOption(browsePage.groupOptions),
       subgroupOptions: browsePage.subgroupOptions,
       totalCount: browsePage.totalCount,
       totalPages: browsePage.totalPages,
@@ -623,7 +633,7 @@ export const initAdminImagesConsole = () => {
     const token = ++requestToken;
     busy = true;
     syncControls();
-    setStatus('loading', '正在加载图片...', false);
+    setStatus('loading', '正在加载图片…', false);
 
     try {
       const result = await fetchList(bootstrap.listEndpoint, currentState, getCurrentPageSize());
