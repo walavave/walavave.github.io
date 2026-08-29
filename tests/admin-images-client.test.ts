@@ -380,7 +380,6 @@ it('posts image delete requests and returns trash metadata', async () => {
   it('does not expose cloud deletion controls in the Images Console', async () => {
     const viewSource = await readFile('src/scripts/admin-images/view.ts', 'utf8');
     const controllerSource = await readFile('src/scripts/admin-images/controller.ts', 'utf8');
-    const pageSource = await readFile('src/pages/admin/images/index.astro', 'utf8');
 
     expect(viewSource).not.toContain('云端删除');
     expect(viewSource).not.toContain('data-cloud-delete');

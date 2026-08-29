@@ -43,6 +43,7 @@ describe('markdown pipeline contract', () => {
   it('declares the shared markdown feature boundaries', () => {
     expect(markdownFeatureContract.map((feature) => feature.id)).toEqual([
       'callout',
+      'link-card',
       'math',
       'cjk-strong',
       'about-directives',
@@ -92,7 +93,7 @@ describe('markdown pipeline contract', () => {
       },
       {
         id: 'project-remark',
-        plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout']
+        plugins: ['remark-math', 'remark-cjk-strong', 'remark-directive', 'remark-about-directives', 'remark-callout', 'remark-link-card']
       }
     ]);
     expect(publicConfig.processor.name).toBe('unified');

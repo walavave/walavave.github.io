@@ -286,7 +286,7 @@ describe('admin images api', () => {
           browseGroupLabel: '云端图片',
           fileName: 'cloud-shot.webp',
           size: 2048,
-          mimeType: 'image/png',
+          mimeType: 'image/webp',
           previewSrc: 'https://cdn.example.test/uploads/essay/guide/cloud-shot.webp'
         }),
         expect.objectContaining({
@@ -643,8 +643,8 @@ describe('admin images api', () => {
     expect(response.status).toBe(200);
     const payload = JSON.parse(await response.text());
     expect(payload.ok).toBe(true);
-    expect(payload.result.src).toBe('./guide-assets/hero-2.png');
-    await expect(readFile(path.join(tempRoot, 'src', 'content', 'essay', 'guide-assets', 'hero-2.png'))).resolves.toBeInstanceOf(Buffer);
+    expect(payload.result.src).toBe('./guide-assets/hero-2.jpg');
+    await expect(readFile(path.join(tempRoot, 'src', 'content', 'essay', 'guide-assets', 'hero-2.jpg'))).resolves.toBeInstanceOf(Buffer);
   });
 
   it('accepts a custom upload file name and still normalizes it to webp', async () => {
@@ -665,10 +665,10 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: './guide-assets/my-custom-cover.png',
-        path: 'src/content/essay/guide-assets/my-custom-cover.png',
-        fileName: 'my-custom-cover.png',
-        mimeType: 'image/png'
+        src: './guide-assets/my-custom-cover.jpg',
+        path: 'src/content/essay/guide-assets/my-custom-cover.jpg',
+        fileName: 'my-custom-cover.jpg',
+        mimeType: 'image/jpeg'
       })
     );
   });
@@ -719,10 +719,10 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: 'bits/feed-banner.png',
-        path: 'public/bits/feed-banner.png',
-        fileName: 'feed-banner.png',
-        mimeType: 'image/png'
+        src: 'bits/feed-banner.jpeg',
+        path: 'public/bits/feed-banner.jpeg',
+        fileName: 'feed-banner.jpeg',
+        mimeType: 'image/jpeg'
       })
     );
   });
@@ -856,6 +856,9 @@ describe('admin images api', () => {
       url: new URL('http://127.0.0.1:4321/api/admin/images/upload')
     } as never);
 
+    // 先推进 0ms 让 request.formData() 完成、deadline 计时器创建，
+    // 否则计时器在 60s 推进之后才注册，永远不会触发。
+    await vi.advanceTimersByTimeAsync(0);
     await vi.advanceTimersByTimeAsync(60_000);
     const response = await responsePromise;
     const payload = JSON.parse(await response.text());
@@ -933,15 +936,15 @@ describe('admin images api', () => {
     expect(payload.ok).toBe(true);
     expect(payload.result).toEqual(
       expect.objectContaining({
-        src: './assets/memo-shot.webp',
-        path: 'src/content/memo/assets/memo-shot.webp',
-        fileName: 'memo-shot.webp',
+        src: './assets/memo-shot.png',
+        path: 'src/content/memo/assets/memo-shot.png',
+        fileName: 'memo-shot.png',
         width: 1,
         height: 1,
         mimeType: 'image/png'
       })
     );
-    await expect(readFile(path.join(tempRoot, 'src', 'content', 'memo', 'assets', 'memo-shot.webp'))).resolves.toBeInstanceOf(Buffer);
+    await expect(readFile(path.join(tempRoot, 'src', 'content', 'memo', 'assets', 'memo-shot.png'))).resolves.toBeInstanceOf(Buffer);
   });
 
   it('rejects memo image uploads for non-index entries', async () => {

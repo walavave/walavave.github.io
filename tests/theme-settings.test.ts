@@ -185,16 +185,19 @@ describe('theme-settings revision semantics', () => {
     expect(getThemeSettingsRevision(mutated)).not.toBe(getThemeSettingsRevision(resolved));
   });
 
-  it('resolves favicon slots to null defaults and emits the default three-link set', () => {
+  it('resolves favicon slots from the demo site.json and emits sized links', () => {
     const resolved = getThemeSettings();
 
-    expect(resolved.settings.site.favicon).toEqual({ svg: null, png: null, appleTouchIcon: null });
-    // demo site.json 显式写了三个 null 槽位，来源应标记为 new（显式配置的默认态）。
+    expect(resolved.settings.site.favicon).toEqual({
+      svg: null,
+      png: '/images/site/favicon-256x256-124d01bc.png',
+      appleTouchIcon: '/images/site/apple-touch-icon-256x256-124d01bc.png'
+    });
+    // demo site.json 显式配置了 png / appleTouchIcon 槽位，来源应标记为 new（显式配置态）。
     expect(resolved.sources.site.faviconPng).toBe('new');
     expect(getSiteFaviconLinks(resolved.settings.site.favicon)).toEqual([
-      { rel: 'icon', type: 'image/svg+xml', sizes: 'any', href: 'favicon.svg' },
-      { rel: 'icon', type: 'image/png', sizes: '32x32', href: 'favicon-32x32.png' },
-      { rel: 'apple-touch-icon', sizes: '180x180', href: 'apple-touch-icon.png' }
+      { rel: 'icon', type: 'image/png', sizes: '256x256', href: '/images/site/favicon-256x256-124d01bc.png' },
+      { rel: 'apple-touch-icon', sizes: '256x256', href: '/images/site/apple-touch-icon-256x256-124d01bc.png' }
     ]);
   });
 

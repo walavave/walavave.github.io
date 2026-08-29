@@ -39,7 +39,7 @@ describe('bits card view model', () => {
     expect(viewModel.dateLabel).toBe('2026-05-27 08:30');
     expect(viewModel.imageItems).toEqual([
       { src: '/blog/bits/a.webp', width: 800, height: 600, alt: 'A' },
-      { src: 'https://example.com/b.webp', alt: '' }
+      { src: 'https://example.com/b.webp', alt: 'Hello配图' }
     ]);
   });
 
