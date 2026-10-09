@@ -1,0 +1,231 @@
+---
+import {
+  formatProgressDate,
+  getProgressState,
+  type ProgressState,
+  type ProgressTask
+} from '../lib/progress';
+import { createWithBase } from '../utils/format';
+import { parseProgressTaskText } from '../lib/progress-links';
+
+const progressState: ProgressState = await getProgressState();
+const currentYear = new Date().getFullYear();
+const initialYear = progressState.years.includes(currentYear)
+  ? currentYear
+  : progressState.years.at(-1) ?? currentYear;
+const base = import.meta.env.BASE_URL ?? '/';
+const apiUrl = createWithBase(base)('/api/progress/');
+
+const getDaysInYear = (year: number): string[] => {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+  const days: string[] = [];
+  for (const date = new Date(start); date < end; date.setDate(date.getDate() + 1)) {
+    days.push(formatProgressDate(date));
+  }
+  return days;
+};
+
+const getWeeks = (year: number): string[][] => {
+  const days = getDaysInYear(year);
+  const firstDay = new Date(year, 0, 1).getDay();
+  const weeks: string[][] = [];
+  let week: string[] = [];
+
+  for (let index = 0; index < firstDay; index += 1) week.push('');
+  for (const date of days) {
+    week.push(date);
+    if (week.length === 7) {
+      weeks.push(week);
+      week = [];
+    }
+  }
+  if (week.length > 0) {
+    while (week.length < 7) week.push('');
+    weeks.push(week);
+  }
+  return weeks;
+};
+
+const getLevel = (tasks: ProgressTask[] | undefined): number => {
+  if (!tasks || tasks.length === 0) return 0;
+  return Math.min(4, tasks.length);
+};
+
+const formatDayLabel = (date: string): string =>
+  new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short'
+  }).format(new Date(`${date}T00:00:00`));
+
+const formatMonthLabel = (date: string | undefined): string => {
+  if (!date || new Date(`${date}T00:00:00`).getDate() > 7) return '';
+  return new Intl.DateTimeFormat('zh-CN', { month: 'short' })
+    .format(new Date(`${date}T00:00:00`));
+};
+
+const formatWeekMonthLabel = (weeks: string[][], index: number): string => {
+  const firstDate = weeks[index]?.find(Boolean);
+  if (!firstDate || new Date(`${firstDate}T00:00:00`).getDate() > 7) return '';
+  const previousDate = weeks[index - 1]?.find(Boolean);
+  if (previousDate) {
+    const currentMonth = firstDate.slice(0, 7);
+    if (previousDate.slice(0, 7) === currentMonth) return '';
+  }
+  return formatMonthLabel(firstDate);
+};
+
+const initialWeeks = getWeeks(initialYear);
+const initialDate = formatProgressDate(new Date());
+const initialTasks = progressState.days[initialDate] ?? [];
+const serializedState = JSON.stringify(progressState).replace(/</g, '\\u003c');
+const isEditable = import.meta.env.DEV;
+---
+
+<section
+  class="progress-heatmap"
+  data-progress-heatmap
+  data-api-url={apiUrl}
+  data-progress-editable={isEditable ? 'true' : 'false'}
+  data-selected-year={String(initialYear)}
+  data-selected-date={initialDate}
+  aria-labelledby="progress-heatmap-title"
+>
+  <div class="progress-heatmap__header">
+    <h2 id="progress-heatmap-title">“我”在干什么</h2>
+  </div>
+
+  <div class="progress-heatmap__years" role="tablist" aria-label="选择年份" data-progress-years>
+    {progressState.years.map((year) => (
+      <button
+        type="button"
+        class:list={['progress-heatmap__year', year === initialYear && 'is-active']}
+        role="tab"
+        aria-selected={year === initialYear ? 'true' : 'false'}
+        data-progress-year={year}
+      >
+        {year}
+      </button>
+    ))}
+  </div>
+
+  <div class="progress-heatmap__calendar-wrap">
+    <div class="progress-heatmap__months" aria-hidden="true" data-progress-months>
+      {initialWeeks.map((_week, index) => {
+        const monthLabel = formatWeekMonthLabel(initialWeeks, index);
+        return <span style={`grid-column: ${index + 1}`}>{monthLabel}</span>;
+      })}
+    </div>
+    <div class="progress-heatmap__grid" role="grid" aria-label={`${initialYear} 年每日进度`} data-progress-grid>
+      {initialWeeks.map((week) => (
+        <div class="progress-heatmap__week" role="row">
+          {week.map((date) => {
+            const tasks = date ? progressState.days[date] : undefined;
+            const label = date ? formatDayLabel(date) : '';
+            if (!date) {
+              return <span class="progress-heatmap__day is-empty" aria-hidden="true"></span>;
+            }
+            if (date > initialDate) {
+              return <span class="progress-heatmap__day is-future" aria-hidden="true"></span>;
+            }
+            if (date < initialDate && (!tasks || tasks.length === 0)) {
+              return <span class="progress-heatmap__day is-disabled" aria-hidden="true"></span>;
+            }
+            return (
+              <button
+                type="button"
+                class:list={['progress-heatmap__day', `is-level-${getLevel(tasks)}`, date === initialDate && 'is-today']}
+                data-progress-date={date}
+                data-progress-level={getLevel(tasks)}
+                role="gridcell"
+                aria-label={`${label}，${tasks && tasks.length > 0 ? `${tasks.length} 项任务` : '尚未记录'}`}
+                title={label}
+              ></button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div class="progress-heatmap__tasks" data-progress-tasks aria-live="polite">
+    <div class="progress-heatmap__tasks-head">
+      <h3 data-progress-date-label>{formatDayLabel(initialDate)}</h3>
+      <span class="progress-heatmap__task-count" data-progress-task-count>{initialTasks.length} 项</span>
+    </div>
+    <div class="progress-heatmap__task-list" data-progress-task-list>
+      {initialTasks.map((task, index) => (
+        <div
+          class:list={['progress-heatmap__task', task.completed && 'is-complete']}
+          data-progress-task-row
+          data-progress-task-index={index}
+        >
+          {isEditable ? (
+            <button
+              type="button"
+              class="progress-heatmap__task-toggle"
+              data-progress-toggle={index}
+              aria-label={task.completed ? `标记任务未完成：${task.text}` : `完成任务：${task.text}`}
+              title={task.completed ? '标记为未完成' : '标记为完成'}
+            ><span aria-hidden="true"></span></button>
+          ) : (
+            <span class:list={['progress-heatmap__task-toggle', task.completed && 'is-complete']} aria-hidden="true">
+              <span aria-hidden="true"></span>
+            </span>
+          )}
+          <span class="progress-heatmap__task-body">
+            {isEditable ? (
+              <span
+                class="progress-heatmap__task-text"
+                contenteditable="plaintext-only"
+                role="textbox"
+                aria-multiline="false"
+                aria-label="编辑任务，回车保存"
+                data-progress-task-text={index}
+              >{task.text}</span>
+            ) : (
+              <span class="progress-heatmap__task-text">
+                {parseProgressTaskText(task.text).map((part) => part.type === 'link'
+                  ? <a href={part.href}>{part.value}</a>
+                  : part.value)}
+              </span>
+            )}
+          </span>
+        </div>
+      ))}
+      {isEditable && (
+        <div class="progress-heatmap__task is-new" data-progress-new-row>
+          <button
+            type="button"
+            class="progress-heatmap__task-toggle progress-heatmap__task-new-toggle"
+            data-progress-new-toggle
+            aria-label="输入任务后标记为完成"
+            title="输入任务后标记为完成"
+          ><span aria-hidden="true"></span></button>
+          <span class="progress-heatmap__task-body">
+            <span
+              class="progress-heatmap__task-text"
+              contenteditable="plaintext-only"
+              role="textbox"
+              aria-multiline="false"
+              aria-label="添加任务，回车保存"
+              data-progress-new-input
+            ></span>
+            <span class="progress-heatmap__task-ghost-line" aria-hidden="true"></span>
+          </span>
+        </div>
+      )}
+    </div>
+    {isEditable && <p class="progress-heatmap__status" data-progress-status role="status"></p>}
+  </div>
+
+  <script is:inline type="application/json" id="progress-heatmap-state" set:html={serializedState}></script>
+</section>
+
+<script>
+  import { initProgressHeatmap } from '../scripts/progress';
+
+  initProgressHeatmap();
+</script>

@@ -112,6 +112,7 @@ let previewArticleElement = $state<HTMLElement | null>(null);
 let syncScrollEnabled = $state(true);
 let imageInsertOpen = $state(false);
 let editingImageBlock = $state<EditableImageBlock | null>(null);
+let pastedImageFile = $state<File | null>(null);
 let outlineJumpCommandId = 0;
 
 const markdownCommandDispatcher = createMarkdownCommandDispatcher({
@@ -162,13 +163,22 @@ const markDirty = () => {
 
 const handleImageToolRequest = (block: EditableImageBlock | null) => {
   if (!editorAdapter.capabilities.bodyImageInsert) return;
+  pastedImageFile = null;
   editingImageBlock = block;
+  imageInsertOpen = true;
+};
+
+const handlePastedImage = (file: File) => {
+  if (!editorAdapter.capabilities.bodyImageInsert || busy) return;
+  editingImageBlock = null;
+  pastedImageFile = file;
   imageInsertOpen = true;
 };
 
 const closeImageInsert = () => {
   imageInsertOpen = false;
   editingImageBlock = null;
+  pastedImageFile = null;
 };
 
 const openGalleryInsert = () => {
@@ -582,6 +592,7 @@ $effect(() => {
     onBodyScrollElementChange={setBodyScrollElement}
     onBodyOutlineJump={handleBodyOutlineJump}
     onImageToolRequest={handleImageToolRequest}
+    onPasteImage={handlePastedImage}
     onGalleryEditRequest={handleGalleryEditRequest}
     onBodyChange={markDirty}
     onPreviewScrollElementChange={setPreviewScrollElement}
@@ -598,6 +609,7 @@ $effect(() => {
     <ImageInsertDialog
       open={imageInsertOpen}
       editDraft={editingImageBlock?.draft ?? null}
+      initialImageFile={pastedImageFile}
       collection="memo"
       uploadEndpoint={imageUploadEndpoint}
       {entryId}
@@ -611,6 +623,7 @@ $effect(() => {
         return;
       }
       markdownCommandDispatcher.insertText(text, placement);
+      pastedImageFile = null;
     }}
     />
   {/if}

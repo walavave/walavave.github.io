@@ -17,6 +17,7 @@ import type { MarkdownInsertPlacement } from '../markdown/markdown-tools';
 type Props = {
   open: boolean;
   editDraft?: ImageBlockDraft | null;
+  initialImageFile?: File | null;
   collection: AdminContentBodyImageUploadCollectionKey;
   uploadEndpoint: string;
   entryId: string;
@@ -44,6 +45,7 @@ const IMAGE_ALIGNMENT_OPTIONS: Array<{ value: ImageDisplayAlignment; label: stri
 let {
   open,
   editDraft = null,
+  initialImageFile = null,
   collection,
   uploadEndpoint,
   entryId,
@@ -70,6 +72,7 @@ let displayAlignment = $state<ImageDisplayAlignment>('center');
 let busy = $state(false);
 let errorText = $state('');
 let appliedEditDraftKey = $state('');
+let appliedInitialFileKey = $state('');
 
 const submitButtonText = $derived(
   busy
@@ -116,6 +119,7 @@ const resetDialog = () => {
   errorText = '';
   busy = false;
   appliedEditDraftKey = '';
+  appliedInitialFileKey = '';
   if (fileInputEl) fileInputEl.value = '';
 };
 
@@ -183,6 +187,17 @@ const handleFileChange = () => {
     ? getSuggestedTargetFileName(editDraft.src)
     : '';
   errorText = '';
+};
+
+const getInitialFileKey = (file: File): string =>
+  [file.name, file.size, file.lastModified, file.type].join('\u0000');
+
+const applyInitialFile = (file: File) => {
+  insertMode = 'upload';
+  selectedFile = file;
+  targetFileName = getSuggestedTargetFileName(file.name) || 'pasted-image';
+  errorText = '';
+  busy = false;
 };
 
 const insertImageText = (src: string, result?: EditorImageUploadResult) => {
@@ -259,6 +274,14 @@ $effect(() => {
   if (!open) {
     resetDialog();
     return;
+  }
+
+  if (initialImageFile && !editDraft) {
+    const fileKey = getInitialFileKey(initialImageFile);
+    if (fileKey !== appliedInitialFileKey) {
+      applyInitialFile(initialImageFile);
+      appliedInitialFileKey = fileKey;
+    }
   }
 
   const editDraftKey = getEditDraftKey(editDraft);

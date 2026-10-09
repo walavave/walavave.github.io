@@ -70,6 +70,7 @@ type Props = {
   onBodyScrollElementChange: (element: HTMLElement | null) => void;
   onBodyOutlineJump: (element: HTMLElement) => void;
   onImageToolRequest: (block: EditableImageBlock | null) => void;
+  onPasteImage?: (file: File) => void;
   onGalleryEditRequest: (block: EditableGalleryBlock) => void;
   onBodyChange?: (value: string) => void;
   onPreviewScrollElementChange: (element: HTMLElement | null) => void;
@@ -129,6 +130,7 @@ let {
   onBodyScrollElementChange,
   onBodyOutlineJump,
   onImageToolRequest,
+  onPasteImage,
   onGalleryEditRequest,
   onBodyChange = () => {},
   onPreviewScrollElementChange,
@@ -169,6 +171,7 @@ let {
         {mediaEditEnabled}
         {galleryEditEnabled}
         {onImageToolRequest}
+        {onPasteImage}
         {onGalleryEditRequest}
         onChange={onBodyChange}
         onShortcutTool={onShortcutTool}

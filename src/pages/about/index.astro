@@ -7,6 +7,7 @@ import { getThemeSettings } from '../../lib/theme-settings';
 import { replaceAboutContactLinksPlaceholderHtml } from '../../lib/about-contact-links';
 import { rewriteRenderedContentImageUrls } from '../../lib/content-local-images.mjs';
 import { createWithBase } from '../../utils/format';
+import AboutMarkdownBody from '../../components/AboutMarkdownBody.astro';
 
 const entry = await getEntry('about', 'index');
 if (!entry) {
@@ -37,6 +38,7 @@ const entryWithContactLinks = entry.rendered
     }
   : entry;
 const { Content } = await render(entryWithContactLinks);
+const renderedAboutHtml = entryWithContactLinks.rendered?.html ?? '';
 ---
 
 <BaseLayout
@@ -87,7 +89,7 @@ const { Content } = await render(entryWithContactLinks);
   </div>
 
   <div class="about-body prose">
-    <Content />
+    <AboutMarkdownBody html={renderedAboutHtml} content={Content} />
   </div>
 
   <script>

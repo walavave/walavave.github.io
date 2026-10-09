@@ -50,7 +50,14 @@ const coverImage = rawCoverImage
       devFs: import.meta.env.DEV
     }) ?? rawCoverImage)
   : null;
-const ogImage = coverImage ?? defaultImage;
+const normalizedCoverValue = entry?.data?.cover?.trim?.() ?? '';
+const entryId = typeof entry?.id === 'string' ? entry.id.replace(/\\/g, '/') : '';
+const entryDirectory = entryId.includes('/') ? `${entryId.slice(0, entryId.lastIndexOf('/') + 1)}` : '';
+const contentRelativeCover = normalizedCoverValue.startsWith('./')
+  ? `${(import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')}/content-assets/essay/${entryDirectory}${normalizedCoverValue.slice(2)}`
+  : null;
+const resolvedCoverImage = contentRelativeCover ?? coverImage;
+const ogImage = resolvedCoverImage ?? defaultImage;
 const derivedText = getEssayDerivedText(entry);
 const rawDescription = entry?.data?.description?.trim?.() ?? '';
 const description = rawDescription || truncateText(derivedText.excerpt, 90);

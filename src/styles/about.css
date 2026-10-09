@@ -79,6 +79,360 @@
   line-height: 1.7;
 }
 
+/* Progress heatmap */
+
+.progress-heatmap {
+  --progress-cell: 12px;
+  --progress-gap: 4px;
+  --progress-muted: color-mix(in srgb, var(--muted) 62%, transparent);
+  margin: 28px 0 0;
+  padding: 18px 0 20px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 18px;
+  font-family: var(--font-copy);
+}
+
+.progress-heatmap__header,
+.progress-heatmap__tasks-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.progress-heatmap h2,
+.progress-heatmap h3 {
+  margin: 0;
+  font-family: var(--font-readable);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.progress-heatmap h2 {
+  font-size: 19px;
+  line-height: 1.35;
+}
+
+.progress-heatmap h3 {
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.progress-heatmap__summary,
+.progress-heatmap__task-count {
+  color: var(--progress-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.progress-heatmap__years {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.progress-heatmap__year {
+  min-width: 58px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--progress-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.progress-heatmap__year:hover,
+.progress-heatmap__year:focus-visible {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.progress-heatmap__year.is-active {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.progress-heatmap__year:focus-visible,
+.progress-heatmap__day:focus-visible,
+.progress-heatmap__task-toggle:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.progress-heatmap__calendar-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 2px 4px 0;
+  scrollbar-width: thin;
+}
+
+.progress-heatmap__months,
+.progress-heatmap__grid {
+  min-width: 580px;
+  width: max-content;
+}
+
+.progress-heatmap__months {
+  display: grid;
+  grid-template-columns: repeat(53, var(--progress-cell));
+  gap: var(--progress-gap);
+  height: 20px;
+  margin-left: calc(var(--progress-cell) + var(--progress-gap));
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.progress-heatmap__months span {
+  white-space: nowrap;
+}
+
+.progress-heatmap__grid {
+  display: flex;
+  gap: var(--progress-gap);
+}
+
+.progress-heatmap__week {
+  display: grid;
+  grid-template-rows: repeat(7, var(--progress-cell));
+  gap: var(--progress-gap);
+}
+
+.progress-heatmap__day {
+  display: block;
+  width: var(--progress-cell);
+  height: var(--progress-cell);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--faint) 15%, transparent);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.progress-heatmap__day.is-empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.progress-heatmap__day.is-future {
+  cursor: default;
+  pointer-events: none;
+}
+
+.progress-heatmap__day.is-disabled {
+  cursor: default;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.progress-heatmap__day.is-level-1,
+.progress-heatmap__legend .is-level-1 {
+  background: color-mix(in srgb, var(--accent) 25%, var(--border) 75%);
+}
+
+.progress-heatmap__day.is-level-2,
+.progress-heatmap__legend .is-level-2 {
+  background: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+}
+
+.progress-heatmap__day.is-level-3,
+.progress-heatmap__legend .is-level-3 {
+  background: color-mix(in srgb, var(--accent) 70%, var(--border) 30%);
+}
+
+.progress-heatmap__day.is-level-4,
+.progress-heatmap__legend .is-level-4 {
+  background: var(--accent);
+}
+
+.progress-heatmap__day:hover {
+  border-color: var(--text);
+  transform: scale(1.18);
+}
+
+.progress-heatmap__day.is-selected {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--bg);
+}
+
+.progress-heatmap__day.is-today {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 66%, transparent);
+}
+
+.progress-heatmap__day.is-selected.is-today {
+  box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--text);
+}
+
+.progress-heatmap__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.progress-heatmap__legend i {
+  display: block;
+  width: var(--progress-cell);
+  height: var(--progress-cell);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--faint) 15%, transparent);
+}
+
+.progress-heatmap__tasks {
+  display: grid;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.progress-heatmap__task-list {
+  display: grid;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.progress-heatmap[data-progress-editable="false"] .progress-heatmap__task-list {
+  min-height: 0;
+}
+
+.progress-heatmap__task {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.progress-heatmap__task-toggle {
+  width: 19px;
+  height: 19px;
+  margin-top: 3px;
+  padding: 0;
+  border: 1px solid var(--faint);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-heatmap__task-toggle span {
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  transform: translateY(-1px) rotate(-45deg);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.progress-heatmap__task-toggle:hover {
+  border-color: var(--text);
+}
+
+.progress-heatmap__task-toggle:not(button) {
+  cursor: default;
+}
+
+.progress-heatmap__task-body {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.progress-heatmap__task-text {
+  display: block;
+  min-width: 96px;
+  min-height: 1.65em;
+  outline: 0;
+  word-break: break-word;
+  white-space: pre-wrap;
+  caret-color: var(--text);
+}
+
+.progress-heatmap__task-text a {
+  border-bottom: 1px dashed currentColor;
+}
+
+.progress-heatmap__task-text a:hover {
+  border-bottom-style: solid;
+}
+
+.progress-heatmap__task-ghost {
+  width: 19px;
+  height: 19px;
+  margin-top: 3px;
+  border: 1px solid var(--faint);
+  border-radius: 50%;
+  opacity: 0.72;
+}
+
+.progress-heatmap__task-ghost-line {
+  display: none;
+  position: absolute;
+  top: auto;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--faint);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.progress-heatmap[data-progress-editable="true"] .progress-heatmap__task-ghost-line {
+  display: block;
+}
+
+.progress-heatmap__task.is-complete .progress-heatmap__task-toggle {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.progress-heatmap__task.is-complete .progress-heatmap__task-toggle span {
+  opacity: 1;
+}
+
+.progress-heatmap__task.is-complete .progress-heatmap__task-text {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--faint);
+}
+
+.progress-heatmap__status {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.progress-heatmap__status[data-state="error"] {
+  color: var(--accent);
+}
+
 .about-body > :first-child {
   margin-top: 0;
 }
@@ -113,6 +467,20 @@
 
 .about-body h3 {
   font-size: 16px;
+}
+
+/* The heatmap is authored in Markdown but keeps its own compact layout. */
+.about-body > .progress-heatmap:first-child {
+  margin-top: 28px;
+}
+
+.about-body .progress-heatmap h2,
+.about-body .progress-heatmap h3 {
+  margin: 0;
+}
+
+.about-body .progress-heatmap__status {
+  margin: 0;
 }
 
 .about-section {
@@ -462,5 +830,24 @@
 
   .friend-list {
     grid-template-columns: 1fr;
+  }
+
+  .progress-heatmap {
+    --progress-cell: 11px;
+    --progress-gap: 3px;
+  }
+}
+
+@media (max-width: 520px) {
+  .progress-heatmap__header,
+  .progress-heatmap__tasks-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .progress-heatmap__summary,
+  .progress-heatmap__task-count {
+    text-align: left;
   }
 }

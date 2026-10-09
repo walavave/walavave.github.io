@@ -44,6 +44,7 @@ type Props = {
   onScrollElementChange?: (element: HTMLElement | null) => void;
   onOutlineJump?: (element: HTMLElement) => void;
   onImageToolRequest?: (block: EditableImageBlock | null) => void;
+  onPasteImage?: (file: File) => void;
   onGalleryEditRequest?: (block: EditableGalleryBlock) => void;
   onChange?: (value: string) => void;
   onShortcutTool?: (toolId: MarkdownToolId) => void;
@@ -61,6 +62,7 @@ let {
   onScrollElementChange,
   onOutlineJump,
   onImageToolRequest,
+  onPasteImage,
   onGalleryEditRequest,
   onChange,
   onShortcutTool
@@ -223,6 +225,25 @@ const createEditorExtensions = (): Extension[] => [
   ...createMediaEditExtensions(),
   history(),
   EditorView.lineWrapping,
+  EditorView.domEventHandlers({
+    paste: (event) => {
+      if (disabled || !onPasteImage) return false;
+
+      const clipboardData = event.clipboardData;
+      if (!clipboardData) return false;
+
+      const imageFile = Array.from(clipboardData.files).find((file) => file.type.startsWith('image/'))
+        ?? Array.from(clipboardData.items)
+          .find((item) => item.kind === 'file' && item.type.startsWith('image/'))
+          ?.getAsFile();
+      if (!imageFile) return false;
+
+      event.preventDefault();
+      event.stopPropagation();
+      onPasteImage(imageFile);
+      return true;
+    }
+  }),
   lineNumbersCompartment.of(lineNumbersEnabled ? lineNumbers() : []),
   EditorView.contentAttributes.of({
     'aria-label': 'Markdown 正文',

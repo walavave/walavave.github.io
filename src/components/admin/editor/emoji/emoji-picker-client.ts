@@ -1,4 +1,4 @@
-import type { EmojiClickEventDetail, I18n } from 'emoji-picker-element/shared.js';
+import type { EmojiClickEventDetail, I18n } from 'emoji-picker-element/shared';
 
 type EmojiPickerHandle = {
   element: HTMLElement;

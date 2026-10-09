@@ -30,6 +30,7 @@ type Props = {
   galleryInsertOpen: boolean;
   imageUploadCollection?: AdminContentBodyImageUploadCollectionKey;
   imageEditDraft?: ImageBlockDraft | null;
+  initialImageFile?: File | null;
   galleryEditDraft?: GalleryBlockDraft | null;
   imageInsertEnabled: boolean;
   galleryInsertEnabled: boolean;
@@ -61,6 +62,7 @@ let {
   galleryInsertOpen,
   imageUploadCollection,
   imageEditDraft = null,
+  initialImageFile = null,
   galleryEditDraft = null,
   imageInsertEnabled,
   galleryInsertEnabled,
@@ -105,6 +107,7 @@ export const captureReturnFocus = (trigger?: Element | null) => {
   <ImageInsertDialog
     open={imageInsertOpen}
     editDraft={imageEditDraft}
+    {initialImageFile}
     collection={imageUploadCollection ?? 'essay'}
     uploadEndpoint={imageUploadEndpoint}
     {entryId}

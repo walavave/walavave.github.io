@@ -1,0 +1,25 @@
+---
+import ProgressHeatmap from './ProgressHeatmap.astro';
+
+const { html, content: Content } = Astro.props;
+const renderedHtml = typeof html === 'string' ? html : '';
+const progressPlaceholderRe =
+  /<div(?=[^>]*\sdata-about-progress-heatmap(?:=(?:"[^"]*"|'[^']*'|[^\s>]+))?)[^>]*><\/div>/i;
+const progressPlaceholder = renderedHtml.match(progressPlaceholderRe);
+const bodyParts = progressPlaceholder
+  ? {
+      before: renderedHtml.slice(0, progressPlaceholder.index),
+      after: renderedHtml.slice((progressPlaceholder.index ?? 0) + progressPlaceholder[0].length)
+    }
+  : null;
+---
+
+{bodyParts ? (
+  <>
+    <Fragment set:html={bodyParts.before} />
+    <ProgressHeatmap />
+    <Fragment set:html={bodyParts.after} />
+  </>
+) : (
+  <Content />
+)}

@@ -89,6 +89,15 @@ export function remarkAboutDirectives(options = {}) {
     if (!shouldTransformAboutDirectives(file, options)) return;
 
     visit(tree, 'leafDirective', (node) => {
+      if (node.name === 'progress-heatmap') {
+        if (!node.data) node.data = {};
+        node.data.hName = 'div';
+        node.data.hProperties = {
+          'data-about-progress-heatmap': ''
+        };
+        return;
+      }
+
       if (node.name !== 'contact-links' && node.name !== 'site-info') return;
 
       const attributes = node.attributes || {};

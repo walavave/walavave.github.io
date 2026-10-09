@@ -1,4 +1,4 @@
-import { getThemeSettings } from '../lib/theme-settings';
+import { getThemeSettings } from '../lib/theme-settings.js';
 import { buildArchiveFeed } from './archive/rss.xml.js';
 
 const { settings } = getThemeSettings();

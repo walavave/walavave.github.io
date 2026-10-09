@@ -147,6 +147,7 @@ let editorDialogs = $state<EditorDialogs | null>(null);
 let imageInsertOpen = $state(false);
 let galleryInsertOpen = $state(false);
 let editingImageBlock = $state<EditableImageBlock | null>(null);
+let pastedImageFile = $state<File | null>(null);
 let editingGalleryBlock = $state<EditableGalleryBlock | null>(null);
 const markdownCommandDispatcher = createMarkdownCommandDispatcher({
   isBusy: () => busy,
@@ -227,11 +228,20 @@ const syncDirtyStatus = () => {
 const closeImageInsert = () => {
   imageInsertOpen = false;
   editingImageBlock = null;
+  pastedImageFile = null;
 };
 
 const handleImageToolRequest = (block: EditableImageBlock | null) => {
   if (!imageInsertEnabled) return;
+  pastedImageFile = null;
   editingImageBlock = block;
+  imageInsertOpen = true;
+};
+
+const handlePastedImage = (file: File) => {
+  if (!imageInsertEnabled || busy) return;
+  editingImageBlock = null;
+  pastedImageFile = file;
   imageInsertOpen = true;
 };
 
@@ -889,6 +899,7 @@ $effect(() => {
       onBodyScrollElementChange={setBodyScrollElement}
       onBodyOutlineJump={handleBodyOutlineJump}
       onImageToolRequest={handleImageToolRequest}
+      onPasteImage={handlePastedImage}
       onGalleryEditRequest={handleGalleryEditRequest}
       onPreviewScrollElementChange={setPreviewScrollElement}
       onShortcutTool={markdownCommandDispatcher.applyTool}
@@ -916,6 +927,7 @@ $effect(() => {
     {imageInsertOpen}
     {galleryInsertOpen}
     imageEditDraft={editingImageBlock?.draft ?? null}
+    initialImageFile={pastedImageFile}
     galleryEditDraft={editingGalleryBlock?.draft ?? null}
     {imageInsertEnabled}
     {galleryInsertEnabled}
@@ -933,6 +945,7 @@ $effect(() => {
         return;
       }
       markdownCommandDispatcher.insertText(text, placement);
+      pastedImageFile = null;
     }}
     onGalleryClose={closeGalleryInsert}
     onGalleryRemove={removeEditingGallery}

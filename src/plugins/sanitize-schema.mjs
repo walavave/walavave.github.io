@@ -97,10 +97,12 @@ export const sanitizeSchema = {
       'dataLang',
       'dataLines',
       'dataAboutContactLinks',
+      'dataAboutProgressHeatmap',
       'data-icon',
       'data-lang',
       'data-lines',
-      'data-about-contact-links'
+      'data-about-contact-links',
+      'data-about-progress-heatmap'
     ]),
     p: mergeAttrs(getSchemaAttrs('p'), ['dataIcon', 'data-icon']),
     pre: mergeAttrs(getSchemaAttrs('pre'), ['dataLang', 'dataLines', 'data-lang', 'data-lines']),

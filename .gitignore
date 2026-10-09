@@ -30,3 +30,6 @@ Thumbs.db
 
 # Font sources (local only)
 tools/fonts-src/
+
+# Blog Studio local app bundle
+dist-app/
